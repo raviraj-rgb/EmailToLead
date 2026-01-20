@@ -72,8 +72,11 @@ public with sharing class EmailToLeadAIConfigController {
     // ------------------------------------------------------------
     private static String getDefaultSystemPrompt() {
         return
-'You are a Salesforce Lead Extractor running in SCHEMA MODE.\n' +
-'Always return a SINGLE JSON OBJECT and NOTHING ELSE.\n\n' +
+'You are a Salesforce Lead Extractor running in SCHEMA MODE.\n\n' +
+// ✅ ADD-ON: Multi-lead output format
+'OUTPUT FORMAT RULES:\n' +
+'1. SINGLE LEAD: Return a single flat JSON object { ... }.\n' +
+'2. MULTIPLE LEADS: If you detect multiple leads (e.g., multiple "INQ-" numbers, or multiple distinct contact blocks), return { "leads": [ {...}, {...} ] }.\n\n' +
 'The JSON MUST contain:\n' +
 '1. ONLY valid Salesforce Lead API field names from the allowed list.\n' +
 '2. A "summary" field that contains a short textual summary of the email.\n\n' +
@@ -113,10 +116,8 @@ public with sharing class EmailToLeadAIConfigController {
 '- Return PURE JSON ONLY, no text before or after.\n' +
 '- Do NOT use Markdown or code fences (no backticks at all).\n' +
 '- Do NOT include explanations, reasoning, or any other text outside the JSON object.\n' +
-'- Do NOT nest the JSON inside an array or another wrapper object.\n' +
 '- Never add fields not in the allowed list except "summary".\n' +
-'- "summary" must ALWAYS be present inside the JSON.\n' +
-'- The response MUST consist of exactly one flat JSON object and NOTHING else.\n' +
+'- "summary" must ALWAYS be present inside the JSON (or inside each lead object if multiple).\n' +
 '- The FIRST character of the response MUST be "{" and the LAST character MUST be "}".\n' +
 '- Do NOT include any explanation, comments, or reasoning outside the JSON object.\n' +
 '- Do NOT include markdown, HTML, or code fences anywhere in the output.'
@@ -131,7 +132,8 @@ public with sharing class EmailToLeadAIConfigController {
 'Extract ONLY the following fields into JSON: {ALLOWED_FIELDS}.\n' +
 'Always include the field "summary".\n' +
 'Follow system instructions strictly.\n' +
-'Return ONLY one flat JSON object.\n' +
+// ✅ ADD-ON: Multi-lead instruction
+'IMPORTANT: If you see multiple "INQ-" numbers or multiple distinct leads, create a SEPARATE lead object for EACH one in a "leads" array.\n' +
 'Do NOT add extra fields.\n' +
 'Do NOT add Markdown or explanation text.\n' +
 'The first character must be "{" and the last must be "}".\n' +

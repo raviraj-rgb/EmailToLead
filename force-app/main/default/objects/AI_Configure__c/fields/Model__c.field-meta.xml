@@ -10,11 +10,25 @@
         <restricted>true</restricted>
         <valueSetDefinition>
             <sorted>false</sorted>
+            <!-- zApi (GLM) Models -->
             <value>
                 <fullName>glm-4.5-air</fullName>
+                <default>true</default>
+                <label>zApi - glm-4.5-air</label>
+            </value>
+            <!-- Groq Model -->
+            <value>
+                <fullName>mixtral-8x7b-32768</fullName>
                 <default>false</default>
-                <label>glm-4.5-air</label>
+                <label>Groq - mixtral-8x7b-32768</label>
+            </value>
+            <!-- Mistral Model -->
+            <value>
+                <fullName>mistral-small-latest</fullName>
+                <default>false</default>
+                <label>Mistral - mistral-small-latest</label>
             </value>
         </valueSetDefinition>
     </valueSet>
 </CustomField>
+

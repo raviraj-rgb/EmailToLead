@@ -277,6 +277,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
 
         String b = body.replace('\r\n', '\n');
 
+        /* OLD LOGIC - Preserved full content for forwarded emails
         // For forwarded emails, preserve full content for AI
         if (isForwardedEmail(b)) {
             System.debug('### Forwarded email detected - preserving full content');
@@ -288,6 +289,10 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         if (dashIdx > 0 && !b.substring(dashIdx).contains('Forwarded')) {
             b = b.substring(0, dashIdx).trim();
         }
+        */
+
+        // NEW LOGIC - Extract innermost email body (strip all forwarding headers)
+        b = extractInnermostEmailBody(b);
 
         String lower = b.toLowerCase();
         Integer brIdx = lower.indexOf('\nbest regards');
@@ -314,6 +319,108 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         }
 
         return b;
+    }
+
+    /* ===================================================================
+       ✅ Extract Innermost Email Body (strips all forwarding headers)
+       Returns the content after the LAST forwarding header block
+    =================================================================== */
+    private static String extractInnermostEmailBody(String body) {
+        if (String.isBlank(body)) return '';
+        
+        String result = body.trim();
+        Boolean foundHeader = true;
+        
+        // Keep stripping until no more headers found
+        while (foundHeader && result.length() > 0) {
+            foundHeader = false;
+            
+            // Pattern 1: Gmail style "---------- Forwarded message ---------"
+            Integer gmailIdx = result.indexOf('---------- Forwarded message ---------');
+            if (gmailIdx >= 0) {
+                // Find the double newline after the header block
+                Integer afterHeader = result.indexOf('\n\n', gmailIdx);
+                if (afterHeader > gmailIdx) {
+                    result = result.substring(afterHeader).trim();
+                    foundHeader = true;
+                    continue;
+                }
+            }
+            
+            // Pattern 2: Outlook style horizontal line with From/Sent/To/Subject
+            Integer outlookIdx = result.indexOf('------------------------------');
+            if (outlookIdx < 0) {
+                outlookIdx = result.indexOf('________________________________');
+            }
+            if (outlookIdx >= 0) {
+                // Check if followed by From/Sent pattern
+                String afterLine = result.substring(outlookIdx);
+                if (afterLine.contains('*From:*') || afterLine.contains('From:')) {
+                    // Find the Subject: line and skip past it
+                    Integer subjectIdx = afterLine.toLowerCase().indexOf('subject:');
+                    if (subjectIdx > 0) {
+                        Integer contentStart = afterLine.indexOf('\n', subjectIdx);
+                        if (contentStart > 0) {
+                            result = afterLine.substring(contentStart).trim();
+                            foundHeader = true;
+                            continue;
+                        }
+                    }
+                }
+            }
+            
+            // Pattern 3: Direct "*From:*" or "From:" at the start (Outlook forwarded)
+            if (result.startsWith('*From:*') || result.startsWith('From:')) {
+                Integer subjectIdx = result.toLowerCase().indexOf('subject:');
+                if (subjectIdx > 0) {
+                    Integer contentStart = result.indexOf('\n', subjectIdx);
+                    if (contentStart > 0) {
+                        result = result.substring(contentStart).trim();
+                        foundHeader = true;
+                        continue;
+                    }
+                }
+            }
+        }
+        
+        // Clean up any remaining signature blocks at the end
+        result = stripTrailingSignature(result);
+        
+        return result.trim();
+    }
+
+    /* ===================================================================
+       ✅ Strip trailing signature from content
+    =================================================================== */
+    private static String stripTrailingSignature(String body) {
+        if (String.isBlank(body)) return '';
+        
+        String result = body;
+        String lower = result.toLowerCase();
+        
+        // Find signature markers and cut at the first one
+        List<String> sigMarkers = new List<String>{
+            '\nview the detailed information available',
+            '\nbest regards',
+            '\nregards,',
+            '\nthanks,',
+            '\nsincerely,',
+            '\n-- \n'
+        };
+        
+        Integer cutIdx = -1;
+        for (String marker : sigMarkers) {
+            Integer idx = lower.indexOf(marker);
+            if (idx > 0) {
+                cutIdx = (cutIdx == -1) ? idx : Math.min(cutIdx, idx);
+            }
+        }
+        
+        if (cutIdx > 0) {
+            result = result.substring(0, cutIdx).trim();
+        }
+        
+        return result;
     }
 
     /* ===================================================================

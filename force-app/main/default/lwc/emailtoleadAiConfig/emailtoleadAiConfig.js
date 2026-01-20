@@ -4,61 +4,108 @@ import getActiveConfig from '@salesforce/apex/EmailToLeadAIConfigController.getA
 import createDefaultConfig from '@salesforce/apex/EmailToLeadAIConfigController.createDefaultConfig';
 
 // ---------- DEFAULT PROMPTS (same as Apex) ----------
+/* OLD PROMPT - Single Lead Only
 const DEFAULT_SYSTEM_PROMPT =
-    'You are a Salesforce Lead Extractor running in SCHEMA MODE.\n' +
-    'Always return a SINGLE JSON OBJECT and NOTHING ELSE.\n\n' +
-    'The JSON MUST contain:\n' +
-    '1. ONLY valid Salesforce Lead API field names from the allowed list.\n' +
-    '2. A "summary" field that contains a short textual summary of the email.\n\n' +
-    'Smart mapping rules:\n' +
-    '- "Name" → FirstName / LastName\n' +
-    '- Email present in email body → Email\n' +
-    '- Phone numbers → Phone or MobilePhone\n' +
-    '- Company names → Company\n' +
-    '- Job titles → Title\n' +
-    '- "budget" or "revenue" → AnnualRevenue\n' +
-    '- "hot" leads → Rating = "Hot"\n' +
-    '- Locations → City, State, Country, Street\n' +
-    '- Employee counts → NumberOfEmployees\n' +
-    '- Website URLs → Website\n' +
-    '- Industry names → Industry\n' +
-    '- Lead source phrases → LeadSource\n' +
-    '- Custom fields ending in __c are allowed and should be used as provided.\n\n' +
-    'Email body handling (IMPORTANT):\n' +
-    '- Treat the "email body" as ONLY the lead-relevant content.\n' +
-    '- Completely IGNORE and EXCLUDE any email signature, footer, or boilerplate when deriving fields or building the summary.\n' +
-    '- Consider as signature/footer (to be ignored):\n' +
-    '  - Blocks at the end of the message that contain the sender\'s name plus job title, company name, and contact details.\n' +
-    '  - Lines that list roles or positions (for example, "Consultant", "Manager", "Director", "CRM Consultant | <Company>") together with phone, email, or address.\n' +
-    '  - Standalone contact blocks with email addresses, phone numbers, websites, social links, or taglines at the very bottom.\n' +
-    '  - Legal disclaimers, confidentiality notices, unsubscribe instructions, or marketing taglines at the bottom of the email.\n' +
-    '- When multiple emails appear, prefer the email that is clearly labeled as the lead/contact email in the main content (for example in labeled fields like "Contact Email: ..."), and ignore emails that are only present in signature/footer blocks.\n\n' +
-    'Data-format rules:\n' +
-    '- Numbers must be numeric types.\n' +
-    '- Dates must be ISO format.\n' +
-    '- Missing data must be empty strings "".\n' +
-    '- Email values MUST NOT contain "mailto:", brackets, parentheses, HTML, markdown, or any surrounding text.\n\n' +
-    'Output rules (STRICT):\n' +
-    '- Return PURE JSON ONLY, no text before or after.\n' +
-    '- Do NOT use Markdown or code fences (no backticks at all).\n' +
-    '- Do NOT include explanations, reasoning, or any other text outside the JSON object.\n' +
-    '- Do NOT nest the JSON inside an array or another wrapper object.\n' +
-    '- Never add fields not in the allowed list except "summary".\n' +
-    '- "summary" must ALWAYS be present inside the JSON.\n' +
-    '- The response MUST consist of exactly one flat JSON object and NOTHING else.\n' +
-    '- The FIRST character of the response MUST be "{", and the LAST character MUST be "}".\n' +
-    '- Do NOT include any explanation, comments, or reasoning outside the JSON object.\n' +
+    'You are a Salesforce Lead Extractor running in SCHEMA MODE.\\n' +
+    'Always return a SINGLE JSON OBJECT and NOTHING ELSE.\\n\\n' +
+    'The JSON MUST contain:\\n' +
+    '1. ONLY valid Salesforce Lead API field names from the allowed list.\\n' +
+    '2. A \"summary\" field that contains a short textual summary of the email.\\n\\n' +
+    'Smart mapping rules:\\n' +
+    '- \"Name\" → FirstName / LastName\\n' +
+    '- Email present in email body → Email\\n' +
+    '- Phone numbers → Phone or MobilePhone\\n' +
+    '- Company names → Company\\n' +
+    '- Job titles → Title\\n' +
+    '- \"budget\" or \"revenue\" → AnnualRevenue\\n' +
+    '- \"hot\" leads → Rating = \"Hot\"\\n' +
+    '- Locations → City, State, Country, Street\\n' +
+    '- Employee counts → NumberOfEmployees\\n' +
+    '- Website URLs → Website\\n' +
+    '- Industry names → Industry\\n' +
+    '- Lead source phrases → LeadSource\\n' +
+    '- Custom fields ending in __c are allowed and should be used as provided.\\n\\n' +
+    'Email body handling (IMPORTANT):\\n' +
+    '- Treat the \"email body\" as ONLY the lead-relevant content.\\n' +
+    '- Completely IGNORE and EXCLUDE any email signature, footer, or boilerplate when deriving fields or building the summary.\\n' +
+    '- Consider as signature/footer (to be ignored):\\n' +
+    '  - Blocks at the end of the message that contain the sender\\'s name plus job title, company name, and contact details.\\n' +
+    '  - Lines that list roles or positions (for example, \"Consultant\", \"Manager\", \"Director\", \"CRM Consultant | <Company>\") together with phone, email, or address.\\n' +
+    '  - Standalone contact blocks with email addresses, phone numbers, websites, social links, or taglines at the very bottom.\\n' +
+    '  - Legal disclaimers, confidentiality notices, unsubscribe instructions, or marketing taglines at the bottom of the email.\\n' +
+    '- When multiple emails appear, prefer the email that is clearly labeled as the lead/contact email in the main content (for example in labeled fields like \"Contact Email: ...\"), and ignore emails that are only present in signature/footer blocks.\\n\\n' +
+    'Data-format rules:\\n' +
+    '- Numbers must be numeric types.\\n' +
+    '- Dates must be ISO format.\\n' +
+    '- Missing data must be empty strings \"\".\\n' +
+    '- Email values MUST NOT contain \"mailto:\", brackets, parentheses, HTML, markdown, or any surrounding text.\\n\\n' +
+    'Output rules (STRICT):\\n' +
+    '- Return PURE JSON ONLY, no text before or after.\\n' +
+    '- Do NOT use Markdown or code fences (no backticks at all).\\n' +
+    '- Do NOT include explanations, reasoning, or any other text outside the JSON object.\\n' +
+    '- Do NOT nest the JSON inside an array or another wrapper object.\\n' +
+    '- Never add fields not in the allowed list except \"summary\".\\n' +
+    '- \"summary\" must ALWAYS be present inside the JSON.\\n' +
+    '- The response MUST consist of exactly one flat JSON object and NOTHING else.\\n' +
+    '- The FIRST character of the response MUST be \"{\", and the LAST character MUST be \"}\".\\n' +
+    '- Do NOT include any explanation, comments, or reasoning outside the JSON object.\\n' +
     '- Do NOT include markdown, HTML, or code fences anywhere in the output.';
+*/
 
+// NEW PROMPT - Supports Multiple Leads (Daily Summary format)
+const DEFAULT_SYSTEM_PROMPT =
+    'You are a Salesforce Lead Extractor.\\n\\n' +
+    'OUTPUT FORMAT RULES:\\n' +
+    '1. SINGLE LEAD: Return a single flat JSON object { ... }.\\n' +
+    '2. MULTIPLE LEADS: If you detect multiple leads (e.g., multiple "INQ-" numbers, or multiple distinct contact blocks), return { "leads": [ {...}, {...} ] }.\\n\\n' +
+    'The JSON MUST contain ONLY valid Salesforce Lead API field names from the allowed list, plus a "summary" field.\\n\\n' +
+    'Smart mapping rules:\\n' +
+    '- \"Name\" → FirstName / LastName\\n' +
+    '- Email present in email body → Email\\n' +
+    '- Phone numbers → Phone or MobilePhone\\n' +
+    '- Company names → Company\\n' +
+    '- Job titles → Title\\n' +
+    '- Locations → City, State, Country, Street\\n' +
+    '- Website URLs → Website\\n' +
+    '- Industry names → Industry\\n' +
+    '- Lead source phrases → LeadSource\\n' +
+    '- Custom fields ending in __c are allowed.\\n\\n' +
+    'Email body handling (IMPORTANT):\\n' +
+    '- IGNORE email signatures, footers, disclaimers, and boilerplate.\\n' +
+    '- When multiple emails appear, prefer the one labeled as the lead/contact email.\\n\\n' +
+    'Data-format rules:\\n' +
+    '- Numbers must be numeric types.\\n' +
+    '- Dates must be ISO format.\\n' +
+    '- Missing data must be empty strings \"\".\\n' +
+    '- Email values MUST NOT contain \"mailto:\", brackets, or HTML.\\n\\n' +
+    'Output rules (STRICT):\\n' +
+    '- Return PURE JSON ONLY, no text before or after.\\n' +
+    '- Do NOT use Markdown or code fences.\\n' +
+    '- The FIRST character MUST be \"{\" and the LAST character MUST be \"}\".\\n' +
+    '- \"summary\" must ALWAYS be present inside each lead object.';
+
+/* OLD USER PROMPT - Single Lead Only
 const DEFAULT_USER_PROMPT =
-    'Extract ONLY the following fields into JSON: {ALLOWED_FIELDS}.\n' +
-    'Always include the field "summary".\n' +
-    'Follow system instructions strictly.\n' +
-    'Return ONLY one flat JSON object.\n' +
-    'Do NOT add extra fields.\n' +
-    'Do NOT add Markdown or explanation text.\n' +
-    'The first character must be "{" and the last must be "}".\n' +
-    'Here is the email body:\n' +
+    'Extract ONLY the following fields into JSON: {ALLOWED_FIELDS}.\\n' +
+    'Always include the field "summary".\\n' +
+    'Follow system instructions strictly.\\n' +
+    'Return ONLY one flat JSON object.\\n' +
+    'Do NOT add extra fields.\\n' +
+    'Do NOT add Markdown or explanation text.\\n' +
+    'The first character must be "{" and the last must be "}".\\n' +
+    'Here is the email body:\\n' +
+    '{EMAIL_BODY}';
+*/
+
+// NEW USER PROMPT - Supports Multiple Leads
+const DEFAULT_USER_PROMPT =
+    'Extract valid Salesforce Lead fields into JSON.\\n' +
+    'IMPORTANT for Daily Summaries: If you see multiple "INQ-" numbers or multiple distinct contact blocks, create a SEPARATE lead object for EACH one in a "leads" array.\\n' +
+    'Allowed Fields: {ALLOWED_FIELDS}.\\n' +
+    'Always include the field "summary" in each lead.\\n' +
+    'Do NOT add Markdown or explanation text.\\n' +
+    'The first character must be "{" and the last must be "}".\\n' +
+    'Here is the email body:\\n' +
     '{EMAIL_BODY}';
 
 // default model (must match what you set in Apex)
