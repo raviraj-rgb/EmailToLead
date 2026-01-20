@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Lead_Created_From_Email__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Indicates if this Lead was created from an inbound email by the EmailToLead AI service</description>
+    <externalId>false</externalId>
+    <label>Is Lead Created From Email</label>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Checkbox</type>
+</CustomField>

@@ -1,0 +1,30 @@
+{
+  "packageDirectories": [
+    {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": true,
+      "package": "EmailToLeadAI",
+      "versionDescription": ""
+    },
+    {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": false,
+      "package": "EmailToLeadApp",
+      "versionDescription": ""
+    }
+  ],
+  "name": "emailtolead-ai-config",
+  "namespace": "EmailToLead_Ai",
+  "sourceApiVersion": "65.0",
+  "packageAliases": {
+    "emailtolead-ai-config 1.0.0.NEXT": "0Ho...",
+    "EmailToLeadAI": "0HoTN0000002P0j0AE",
+    "EmailToLeadApp": "0HoTN0000002P2L0AU",
+    "EmailToLeadApp@0.1.0-5": "04tTN000000AU6TYAW",
+    "EmailToLeadApp@0.1.0-10": "04tTN000000AUhZYAW"
+  }
+}

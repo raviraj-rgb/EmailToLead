@@ -1,0 +1,155 @@
+/*.page-container {
+    padding: 1.5rem;
+}
+
+/* Model field wrapper - consistent width across all orgs 
+.model-row {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 1rem;
+}
+
+/* Force the input-field to take full width 
+.model-row lightning-input-field {
+    --slds-c-input-sizing-width: 100%;
+    --sds-c-input-sizing-width: 100%;
+    width: 100% !important;
+    display: block;
+}
+
+/* Target the combobox inside 
+.model-row lightning-input-field lightning-combobox,
+.model-row lightning-input-field lightning-picklist {
+    width: 100% !important;
+}
+
+/* Two-column layout for prompts 
+.prompt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+/* Textarea styling - consistent across orgs 
+.prompt-textarea {
+    --sds-c-textarea-sizing-min-height: 420px;
+    --sds-c-textarea-sizing-height: 420px;
+    --sds-c-textarea-color-background: #ffffff;
+    --sds-c-textarea-text-color: #181818;
+    --sds-c-textarea-color-border: #c9c9c9;
+
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Fallback for orgs that don't respect custom properties 
+.prompt-textarea textarea {
+    background-color: #ffffff !important;
+    color: #181818 !important;
+    min-height: 420px !important;
+}
+
+/* Buttons 
+.actions {
+    margin-top: 1.75rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}*/
+.page-container {
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Modal picklist containment - CRITICAL FIX */
+:host {
+    --slds-c-modal-z-index: 9000;
+    position: relative;
+}
+
+/* Contain ALL picklist dropdowns in component */
+:host lightning-combobox .slds-dropdown,
+:host lightning-picklist .slds-dropdown,
+:host [data-slds-dropdown] {
+    position: absolute !important;
+    z-index: 9001 !important;
+    max-width: 350px !important;
+    max-height: 250px !important;
+    overflow-y: auto !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Fix input-field combobox specifically */
+.model-row lightning-input-field .slds-combobox_dropdown,
+.model-row lightning-input-field .slds-dropdown {
+    inset: 0 auto auto 0 !important;
+    margin-top: 0.25rem !important;
+    width: 100% !important;
+    max-width: 350px !important;
+}
+
+/* Model field wrapper - consistent width across all orgs */
+.model-row {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 1rem;
+    z-index: 9000;
+}
+
+/* Force the input-field to take full width */
+.model-row lightning-input-field {
+    --slds-c-input-sizing-width: 100%;
+    --sds-c-input-sizing-width: 100%;
+    width: 100% !important;
+    display: block;
+    position: relative;
+}
+
+/* Target the combobox inside */
+.model-row lightning-input-field lightning-combobox,
+.model-row lightning-input-field lightning-picklist {
+    width: 100% !important;
+    position: relative !important;
+}
+
+/* Two-column layout for prompts */
+.prompt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+/* Textarea styling - consistent across orgs */
+.prompt-textarea {
+    --sds-c-textarea-sizing-min-height: 420px;
+    --sds-c-textarea-sizing-height: 420px;
+    --sds-c-textarea-color-background: #ffffff;
+    --sds-c-textarea-text-color: #181818;
+    --sds-c-textarea-color-border: #c9c9c9;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Fallback for orgs that don't respect custom properties */
+.prompt-textarea textarea {
+    background-color: #ffffff !important;
+    color: #181818 !important;
+    min-height: 420px !important;
+}
+
+/* Buttons */
+.actions {
+    margin-top: 1.75rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
