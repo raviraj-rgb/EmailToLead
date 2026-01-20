@@ -667,7 +667,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         Lead leadObj
     ) {
         if (String.isBlank(body)
-            || String.isBlank(cfg.EmailToLead_Ai__Nick_Keyword__c)
+            || String.isBlank(cfg.EmailToLead_Ai__Nick_Keyword__c) //
             || String.isBlank(cfg.EmailToLead_Ai__Nick_User__c)) {
             return;
         }
