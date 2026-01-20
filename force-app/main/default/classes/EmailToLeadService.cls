@@ -637,6 +637,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         // Defaults
         leadObj.EmailToLead_Ai__Is_Lead_Created_From_Email__c = true;
         if (String.isBlank(leadObj.LastName)) leadObj.LastName = 'Unknown';
+        // Happy Birthday Yesudas
         
         // Email priority: AI extracted > Original sender > email.fromAddress
         if (String.isBlank(leadObj.Email)) {
