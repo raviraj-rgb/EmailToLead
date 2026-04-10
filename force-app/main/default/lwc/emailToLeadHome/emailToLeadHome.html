@@ -1,0 +1,20 @@
+<template>
+    <lightning-card title="EmailToLead Home">
+        <div class="slds-m-bottom_medium slds-grid slds-grid_align-center">
+            <lightning-button-group>
+                <lightning-button label="Field Selector" variant={fieldVariant} onclick={showFieldSelector}>
+                </lightning-button>
+                <lightning-button label="AI Config" variant={aiVariant} onclick={showAiConfig}>
+                </lightning-button>
+            </lightning-button-group>
+        </div>
+
+        <template if:true={showField}>
+            <c-field-selector-u-i></c-field-selector-u-i>
+        </template>
+
+        <template if:true={showAi}>
+            <c-emailtolead-ai-config></c-emailtolead-ai-config>
+        </template>
+    </lightning-card>
+</template>

@@ -1,0 +1,19 @@
+<template>
+    <lightning-card>
+        <div class="controls">
+            <div class="slds-text-align_center">
+                <div class="controls__button"> RESPONSE JSON</div>
+                <!-- No need for the button since handlePrettify will be called automatically -->
+            </div>
+        </div>
+
+        <lightning-textarea class="large-area" read-only="true" lwc:ref="outputArea"
+            placeholder="Your JSON Response will appear here...">
+        </lightning-textarea>
+        <br>
+        <div class="slds-text-align_center controls__button">REQUEST JSON</div>
+        <lightning-textarea class="large-area" read-only="true" lwc:ref="inputArea"
+            placeholder="Your JSON Response will appear here...">
+        </lightning-textarea>
+    </lightning-card>
+</template>

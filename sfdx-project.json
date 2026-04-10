@@ -1,0 +1,39 @@
+{
+  "namespace": "EmailToLead_Ai",
+  "packageDirectories": [
+    {
+      "path": "force-app",
+      "default": true,
+      "package": "EmailToLeadApp",
+      "versionName": "EmailToLead 1.0",
+      "versionNumber": "1.1.0.NEXT",
+      "ancestorVersion": "1.0.0.10"
+    },
+    {
+      "versionName": "ver 0.1",
+      "versionNumber": "0.1.0.NEXT",
+      "path": "force-app",
+      "default": false,
+      "package": "EmailToLeadAI_Package",
+      "versionDescription": ""
+    }
+  ],
+  "name": "EmailToLead",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "65.0",
+  "packageAliases": {
+    "EmailToLeadApp": "0HoTN0000002P2L0AU",
+    "EmailToLeadApp@1.0.0-1": "04tTN000000Aa8fYAC",
+    "EmailToLeadApp@1.0.0-2": "04tTN000000AaF7YAK",
+    "EmailToLeadApp@1.0.0-3": "04tTN000000AaWrYAK",
+    "EmailToLeadApp@1.0.0-4": "04tTN000000Aaa5YAC",
+    "EmailToLeadApp@1.0.0-5": "04tTN000000AaevYAC",
+    "EmailToLeadApp@1.0.0-6": "04tTN000000AagXYAS",
+    "EmailToLeadApp@1.0.0-7": "04tTN000000AcyTYAS",
+    "EmailToLeadApp@1.0.0-8": "04tTN000000Ad05YAC",
+    "EmailToLeadApp@1.0.0-10": "04tTN000000AivqYAC",
+    "EmailToLeadApp@1.1.0-1": "04tTN000000AjWvYAK",
+    "EmailToLeadAI_Package": "0HoTN0000002snV0AQ",
+    "EmailToLeadAI_Package@0.1.0-19": "04tTN000000B4MrYAK"
+  }
+}

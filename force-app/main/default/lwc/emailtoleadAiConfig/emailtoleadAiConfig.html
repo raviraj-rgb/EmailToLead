@@ -1,0 +1,72 @@
+<!--<template>
+    <template if:true={loaded}>
+        <lightning-card title="EmailToLead AI Config" icon-name="utility:robot">
+            <div class="slds-p-around_medium">
+
+                <lightning-record-edit-form object-api-name="Ai_Config__c" record-id={configId} onsubmit={handleSubmit}
+                    onsuccess={handleSuccess}>
+
+                    <lightning-messages></lightning-messages>
+
+                    <lightning-input-field field-name="Model__c"></lightning-input-field>
+
+                    <div class="slds-m-top_medium">
+                        <lightning-textarea label="System Prompt" value={systemPrompt}
+                            onchange={handleSystemPromptChange}>
+                        </lightning-textarea>
+                    </div>
+
+                    <div class="slds-m-top_medium">
+                        <lightning-textarea label="User Prompt" value={userPrompt} onchange={handleUserPromptChange}>
+                        </lightning-textarea>
+                    </div>
+
+                    <div class="slds-m-top_medium slds-align_absolute-center">
+                        <lightning-button variant="brand" type="submit" label="Save" class="slds-m-right_small">
+                        </lightning-button>
+
+                        <lightning-button variant="neutral" label="Reset" onclick={handleReset}>
+                        </lightning-button>
+                    </div>
+                </lightning-record-edit-form>
+
+            </div>
+        </lightning-card>
+    </template>
+</template>-->
+<template>
+    <template if:true={loaded}>
+        <lightning-card title="EmailToLead AI Config" icon-name="utility:robot">
+            <div class="page-container">
+                <lightning-record-edit-form object-api-name="EmailToLead_Ai__AI_Configure__c" record-id={configId}
+                    onsubmit={handleSubmit} onsuccess={handleSuccess}>
+                    <lightning-messages></lightning-messages>
+
+                    <!-- Model picklist -->
+                    <lightning-combobox name="model" label="Model" value={modelValue} options={modelOptions}
+                        onchange={handleModelChange} placeholder="Select Model">
+                    </lightning-combobox>
+
+
+                    <!-- Prompts -->
+                    <div class="prompt-grid">
+                        <lightning-textarea class="prompt-textarea" label="System Prompt" value={systemPrompt}
+                            onchange={handleSystemPromptChange}>
+                        </lightning-textarea>
+
+                        <lightning-textarea class="prompt-textarea" label="User Prompt" value={userPrompt}
+                            onchange={handleUserPromptChange}>
+                        </lightning-textarea>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="actions">
+                        <lightning-button variant="brand" type="submit" label="Save"></lightning-button>
+
+                        <lightning-button variant="neutral" label="Reset" onclick={handleReset}></lightning-button>
+                    </div>
+                </lightning-record-edit-form>
+            </div>
+        </lightning-card>
+    </template>
+</template>

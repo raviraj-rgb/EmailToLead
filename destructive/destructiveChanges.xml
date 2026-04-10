@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>EmailToLeadAIConfigController</members>
+        <members>EmailToLeadAIConfigControllerTest</members>
+        <members>EmailLeadFieldConfigController</members>
+        <members>EmailLeadFieldConfigControllerTest</members>
+        <members>EmailToLeadService</members>
+        <members>EmailToLeadServiceTest</members>
+        <members>EmailToLeadService_Test</members>
+        <members>CustomExceptionLogger</members>
+        <members>CustomExceptionLoggerTest</members>
+        <members>EmailToLeadRetryBatch</members>
+        <members>EmailToLeadRetryBatchTest</members>
+        <members>EmailToLeadRetryScheduler</members>
+        <members>EmailToLeadRetrySchedulerTest</members>
+        <members>AI_ConfigureTriggerTest</members>
+        <name>ApexClass</name>
+    </types>
+    <version>65.0</version>
+</Package>

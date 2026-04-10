@@ -1,0 +1,76 @@
+<!--<template>
+    <lightning-card title="Email-to-Lead Field Selector" icon-name="standard:scan_card">
+        <div class="slds-var-p-around_medium">
+            <lightning-dual-listbox name="leadFields" label="Select Lead fields for AI Email → Lead"
+                field-level-help="Only selected fields will be populated from AI JSON." source-label="Available Fields"
+                selected-label="Selected Fields" options={fieldOptions} value={selectedValues} onchange={handleChange}
+                size="10">
+            </lightning-dual-listbox>
+            <lightning-combobox name="emailBodyField" label="Field to store full Email Body"
+                options={longTextFieldOptions} value={emailBodyField} onchange={handleEmailBodyFieldChange}>
+            </lightning-combobox>
+
+            <lightning-combobox name="summaryField" label="Field to store AI Summary" options={longTextFieldOptions}
+                value={summaryField} onchange={handleSummaryFieldChange}>
+            </lightning-combobox>
+            <div class="slds-var-m-top_medium">
+                <lightning-button variant="brand" label="Save" onclick={handleSave} disabled={isSaving}>
+                </lightning-button>
+                <template if:true={isSaving}>
+                    <lightning-spinner size="small" alternative-text="Saving"></lightning-spinner>
+                </template>
+            </div>
+        </div>
+    </lightning-card>
+</template> -->
+<template>
+    <lightning-card title="Email-to-Lead Field Selector" icon-name="standard:scan_card">
+        <div class="slds-var-p-around_medium">
+
+            <!-- Email address to copy -->
+            <div class="slds-m-bottom_medium">
+                <lightning-layout vertical-align="center">
+                    <lightning-layout-item flexibility="auto">
+                        <p class="slds-text-body_regular slds-m-bottom_xx-small">
+                            Send incoming emails to:
+                        </p>
+
+                        <div class="slds-grid slds-grid_vertical-align-center">
+                            <!-- Full email as plain text -->
+                            <span class="slds-text-body_regular slds-m-right_x-small">
+                                {emailServiceAddress}
+                            </span>
+
+                            <!-- Copy icon -->
+                            <lightning-button-icon icon-name="utility:copy" variant="border-filled"
+                                alternative-text="Copy email" title="Copy email" onclick={handleCopyEmail}>
+                            </lightning-button-icon>
+                        </div>
+                    </lightning-layout-item>
+                </lightning-layout>
+            </div>
+
+            <lightning-dual-listbox name="leadFields" label="Select Lead fields for AI Email → Lead"
+                field-level-help="Only selected fields will be populated from AI JSON." source-label="Available Fields"
+                selected-label="Selected Fields" options={fieldOptions} value={selectedValues} onchange={handleChange}
+                size="10">
+            </lightning-dual-listbox>
+
+            <lightning-combobox name="emailBodyField" label="Field to store full Email Body"
+                options={longTextFieldOptions} value={emailBodyField} onchange={handleEmailBodyFieldChange}>
+            </lightning-combobox>
+
+            <lightning-combobox name="summaryField" label="Field to store AI Summary" options={longTextFieldOptions}
+                value={summaryField} onchange={handleSummaryFieldChange}>
+            </lightning-combobox>
+
+            <div class="slds-var-m-top_medium">
+                <lightning-button variant="brand" label="Save" onclick={handleSave} disabled={isSaving}>
+                </lightning-button>
+                <template if:true={isSaving}>
+                    <lightning-spinner size="small" alternative-text="Saving"></lightning-spinner>
+                </template>
+            </div>
+        </div>
+    </lightning-card>
+</template>

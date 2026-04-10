@@ -1,0 +1,32 @@
+.page-container {
+    padding: 1.5rem;
+}
+
+/* Two-column layout */
+.prompt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+/*
+  This is the IMPORTANT part
+  Controls the visible height of lightning-textarea
+*/
+.prompt-textarea {
+    --sds-c-textarea-sizing-min-height: 420px;
+    --sds-c-textarea-sizing-height: 420px;
+
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* Buttons */
+.actions {
+    margin-top: 1.75rem;
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
