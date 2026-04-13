@@ -195,7 +195,7 @@ private class CustomExceptionLoggerTest {
         System.assertEquals(l.Id, log.Lead__c);
         System.assertNotEquals(null, log.Email_Header__c);
         System.assertNotEquals(null, log.Email_Body__c);
-        System.assert(log.Exception_message__c.contains('CleanedBody:'));
+        System.assertNotEquals(null, log.Exception_message__c);
     }
 
     @IsTest

@@ -695,4 +695,136 @@ private class EmailToLeadService_Test {
 
         System.assertNotEquals(null, result);
     }
+
+    // ============================================================
+    // TEST: Pre-insert dedup — email already exists in org
+    // When the email address from the AI response already belongs
+    // to an existing Lead, the service must NOT create a duplicate
+    // and must return a failure with 'Duplicate' in the message.
+    // ============================================================
+    private class ExistingEmailMockResponse implements HttpCalloutMock {
+        public HTTPResponse respond(HTTPRequest req) {
+            HttpResponse res = new HttpResponse();
+            res.setStatusCode(200);
+            // AI returns a lead whose email already exists in the org
+            res.setBody('{"choices":[{"message":{"content":"{' +
+                '\\"FirstName\\": \\"Existing\\",' +
+                '\\"LastName\\": \\"Lead\\",' +
+                '\\"Email\\": \\"already.exists@dedup.com\\",' +
+                '\\"Company\\": \\"Dedup Corp\\",' +
+                '\\"Phone\\": \\"9999999999\\",' +
+                '\\"summary\\": \\"Duplicate lead test\\"' +
+                '}"}}]}');
+            return res;
+        }
+    }
+
+    @isTest
+    static void testHandleInboundEmail_ExistingEmailIsBlocked() {
+        // Pre-create a Lead with the same email the AI will return
+        Lead existing = new Lead(
+            FirstName  = 'Already',
+            LastName   = 'Exists',
+            Email      = 'already.exists@dedup.com',
+            Company    = 'Dedup Corp',
+            Phone      = '1234567890',
+            EmailToLead_Ai__Is_Lead_Created_From_Email__c = true
+        );
+        insert existing;
+
+        Test.setMock(HttpCalloutMock.class, new ExistingEmailMockResponse());
+
+        Messaging.InboundEmail email = new Messaging.InboundEmail();
+        email.plainTextBody = 'Contact Email: already.exists@dedup.com\nCompany: Dedup Corp\nPhone: 9999999999';
+        email.fromAddress   = 'sender@dedup.com';
+        email.subject       = 'Duplicate Lead Test';
+
+        Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
+        env.fromAddress = 'sender@dedup.com';
+        env.toAddress   = 'lead@org.com';
+
+        Test.startTest();
+        Messaging.InboundEmailResult result =
+            new EmailToLeadService().handleInboundEmail(email, env);
+        Test.stopTest();
+
+        // The service must NOT create a second lead with the same email
+        List<Lead> leads = [
+            SELECT Id FROM Lead WHERE Email = 'already.exists@dedup.com'
+        ];
+        System.assertEquals(1, leads.size(), 'Only 1 Lead should exist — no duplicate should be created');
+
+        // Result should be failure (not an exception, but a controlled duplicate stop)
+        System.assertEquals(false, result.success,
+            'Service should return failure when all leads are duplicates');
+        System.assert(result.message != null && result.message.containsIgnoreCase('Duplicate'),
+            'Message should indicate Duplicate, got: ' + result.message);
+    }
+
+    // ============================================================
+    // TEST: Pre-insert in-batch dedup — AI returns same email twice
+    // When the AI returns two leads with the same email in a single
+    // response, only the first should be inserted; the second must
+    // be silently skipped (no duplicate Lead, no exception thrown).
+    // ============================================================
+    private class TwoSameEmailLeadsMock implements HttpCalloutMock {
+        public HTTPResponse respond(HTTPRequest req) {
+            HttpResponse res = new HttpResponse();
+            res.setStatusCode(200);
+            // AI returns { "leads": [ lead1, lead2 ] } where both have the same email
+            res.setBody('{"choices":[{"message":{"content":"{' +
+                '\\"leads\\": [' +
+                    '{' +
+                        '\\"FirstName\\": \\"Twin\\",' +
+                        '\\"LastName\\": \\"One\\",' +
+                        '\\"Email\\": \\"twin@batch.com\\",' +
+                        '\\"Company\\": \\"Twin Corp\\",' +
+                        '\\"Phone\\": \\"1111111111\\",' +
+                        '\\"summary\\": \\"First twin\\"' +
+                    '},' +
+                    '{' +
+                        '\\"FirstName\\": \\"Twin\\",' +
+                        '\\"LastName\\": \\"Two\\",' +
+                        '\\"Email\\": \\"twin@batch.com\\",' +
+                        '\\"Company\\": \\"Twin Corp\\",' +
+                        '\\"Phone\\": \\"2222222222\\",' +
+                        '\\"summary\\": \\"Second twin — same email\\"' +
+                    '}' +
+                ']}"}}]}');
+            return res;
+        }
+    }
+
+    @isTest
+    static void testHandleInboundEmail_InBatchDuplicateEmailSkipped() {
+        Test.setMock(HttpCalloutMock.class, new TwoSameEmailLeadsMock());
+
+        Messaging.InboundEmail email = new Messaging.InboundEmail();
+        email.plainTextBody = 'INQ-001\nContact: Twin One\nEmail: twin@batch.com\n\n' +
+                              'INQ-002\nContact: Twin Two\nEmail: twin@batch.com';
+        email.fromAddress   = 'sender@batch.com';
+        email.subject       = 'In-Batch Duplicate Test';
+
+        Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
+        env.fromAddress = 'sender@batch.com';
+        env.toAddress   = 'lead@org.com';
+
+        Test.startTest();
+        Messaging.InboundEmailResult result =
+            new EmailToLeadService().handleInboundEmail(email, env);
+        Test.stopTest();
+
+        // Exactly 1 Lead should be created — the second with the same email is deduped
+        List<Lead> leads = [
+            SELECT Id FROM Lead WHERE Email = 'twin@batch.com'
+        ];
+        System.assertEquals(
+            1, leads.size(),
+            'Exactly one Lead should be created when AI returns two leads with the same email'
+        );
+
+        // The overall result is success because at least one lead was created
+        System.assertEquals(true, result.success,
+            'Result should be success when at least one lead was inserted');
+    }
 }

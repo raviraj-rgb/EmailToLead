@@ -10,12 +10,13 @@
       "ancestorVersion": "1.0.0.10"
     },
     {
-      "versionName": "ver 0.1",
-      "versionNumber": "0.1.0.NEXT",
+      "versionName": "ver 0.2",
+      "versionNumber": "0.2.0.NEXT",
       "path": "force-app",
       "default": false,
       "package": "EmailToLeadAI_Package",
-      "versionDescription": ""
+      "versionDescription": "",
+      "ancestorVersion": "0.1.0"
     }
   ],
   "name": "EmailToLead",
@@ -34,6 +35,7 @@
     "EmailToLeadApp@1.0.0-10": "04tTN000000AivqYAC",
     "EmailToLeadApp@1.1.0-1": "04tTN000000AjWvYAK",
     "EmailToLeadAI_Package": "0HoTN0000002snV0AQ",
-    "EmailToLeadAI_Package@0.1.0-19": "04tTN000000B4MrYAK"
+    "EmailToLeadAI_Package@0.1.0-19": "04tTN000000B4MrYAK",
+    "EmailToLeadAI_Package@0.2.0-3": "04tTN000000BMEvYAO"
   }
 }

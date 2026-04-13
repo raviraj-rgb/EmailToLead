@@ -83,14 +83,26 @@ global class EmailToLeadRetryBatch implements Database.Batchable<SObject>, Datab
                     successAuditLogs.add(successLog);
 
                 } else {
-                    if (res != null && res.message != null && res.message.containsIgnoreCase('duplicate')) {
+                    String resMsg = (res != null && res.message != null) ? res.message : 'null result';
+
+                    if (resMsg.containsIgnoreCase('duplicate')) {
+                        // Existing lead — retrying will always produce same result
                         logRec.EmailToLead_Ai__Retry_Status__c = 'Duplicate';
                         logRec.EmailToLead_Ai__Next_Retry_Time__c = null;
+                    } else if (resMsg.containsIgnoreCase('No leads created') ||
+                               resMsg.containsIgnoreCase('AI returned no lead data') ||
+                               resMsg.containsIgnoreCase('Empty AI response') ||
+                               resMsg.containsIgnoreCase('No JSON')) {
+                        // AI could not extract any usable lead data — permanent failure,
+                        // retrying the same email body will never produce a different result
+                        logRec.EmailToLead_Ai__Retry_Status__c = 'Failed';
+                        logRec.EmailToLead_Ai__Next_Retry_Time__c = null;
                     } else {
+                        // Transient error (API timeout, callout failure, etc.) — retry later
                         logRec.EmailToLead_Ai__Retry_Status__c = 'Pending';
                         logRec.EmailToLead_Ai__Next_Retry_Time__c = System.now().addHours(retryHours);
                     }
-                    logRec.EmailToLead_Ai__Exception_message__c = 'Retry #' + logRec.EmailToLead_Ai__Retry_Count__c + ' failed: ' + (res != null ? res.message : 'null result');
+                    logRec.EmailToLead_Ai__Exception_message__c = 'Retry #' + logRec.EmailToLead_Ai__Retry_Count__c + ' failed: ' + resMsg;
                     failureCount++;
                 }
 

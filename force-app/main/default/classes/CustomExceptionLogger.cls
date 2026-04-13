@@ -42,24 +42,27 @@ global class CustomExceptionLogger {
                     cause = cause.getCause();
                 }
             }
-            logRec.EmailToLead_Ai__Exception_message__c = msg;
+            logRec.EmailToLead_Ai__Exception_message__c = truncate(msg, 32768);
             logRec.EmailToLead_Ai__Type__c = typeValue;
 
             logRec.EmailToLead_Ai__Error_RecordId__c =
                 (errorRecordId == null ? null : String.valueOf(errorRecordId));
 
-            logRec.EmailToLead_Ai__RequestJSON__c = requestJSON;
-            logRec.EmailToLead_Ai__ResponseJSON__c = responseJSON;
+            logRec.EmailToLead_Ai__RequestJSON__c  = truncate(requestJSON,  32768);
+            logRec.EmailToLead_Ai__ResponseJSON__c = truncate(stripThoughtSignature(responseJSON), 32768);
 
             if (leadId != null) {
                 logRec.EmailToLead_Ai__Lead__c = leadId;
             }
 
-            if (!String.isBlank(emailHeader)) {
+            // Email_Header__c is used by the Retry Batch to re-process the email.
+            // It must NEVER be truncated — a partial email body produces wrong leads on retry.
+            if (String.isNotBlank(emailHeader)) {
                 logRec.EmailToLead_Ai__Email_Header__c = emailHeader;
             }
 
-            if (!String.isBlank(emailBody)) {
+            // Email_Body__c is for display/reference only — kept intact.
+            if (String.isNotBlank(emailBody)) {
                 logRec.EmailToLead_Ai__Email_Body__c = emailBody;
             }
 
@@ -95,11 +98,11 @@ global class CustomExceptionLogger {
 
             logRec.Name = 'Success - ' + Datetime.now().format();
             logRec.EmailToLead_Ai__Class_Name__c = className;
-            logRec.EmailToLead_Ai__Exception_message__c = message;
+            logRec.EmailToLead_Ai__Exception_message__c = truncate(message, 32768);
             logRec.EmailToLead_Ai__Type__c = typeValue;
 
-            logRec.EmailToLead_Ai__RequestJSON__c = requestJSON;
-            logRec.EmailToLead_Ai__ResponseJSON__c = responseJSON;
+            logRec.EmailToLead_Ai__RequestJSON__c  = truncate(requestJSON,  32768);
+            logRec.EmailToLead_Ai__ResponseJSON__c = truncate(stripThoughtSignature(responseJSON), 32768);
 
             logRec.EmailToLead_Ai__Line_Number__c = null;
             logRec.EmailToLead_Ai__Error_RecordId__c = null;
@@ -145,11 +148,6 @@ global class CustomExceptionLogger {
                 logRec.EmailToLead_Ai__Lead__c = existingLeadId;
             }
 
-            // store cleaned body inside message (since no separate field exists)
-            if (!String.isBlank(cleanedBody)) {
-                msg += ' | CleanedBody: ' + cleanedBody;
-            }
-
             if (ex != null) {
                 String stack = ex.getStackTraceString();
                 if (String.isNotBlank(stack)) {
@@ -157,17 +155,19 @@ global class CustomExceptionLogger {
                 }
             }
 
-            logRec.EmailToLead_Ai__Exception_message__c = msg;
+            logRec.EmailToLead_Ai__Exception_message__c = truncate(msg, 32768);
             logRec.EmailToLead_Ai__Type__c = 'Duplicate';
 
-            logRec.EmailToLead_Ai__RequestJSON__c = requestJSON;
-            logRec.EmailToLead_Ai__ResponseJSON__c = responseJSON;
+            logRec.EmailToLead_Ai__RequestJSON__c  = truncate(requestJSON,  32768);
+            logRec.EmailToLead_Ai__ResponseJSON__c = truncate(stripThoughtSignature(responseJSON), 32768);
 
-            if (!String.isBlank(emailHeader)) {
+            // Email_Header__c — kept intact (Retry Batch reads it to re-process email)
+            if (String.isNotBlank(emailHeader)) {
                 logRec.EmailToLead_Ai__Email_Header__c = emailHeader;
             }
 
-            if (!String.isBlank(emailBody)) {
+            // Email_Body__c — kept intact (reference/display only)
+            if (String.isNotBlank(emailBody)) {
                 logRec.EmailToLead_Ai__Email_Body__c = emailBody;
             }
 
@@ -188,6 +188,32 @@ global class CustomExceptionLogger {
     // ---------------------------
     // Helper methods
     // ---------------------------
+
+    /**
+     * Truncates a string to maxLen characters to prevent DML failures on Long Text Area fields.
+     * Only used on DIAGNOSTIC fields (RequestJSON, ResponseJSON, Exception_message).
+     * Never used on Email_Header__c which the Retry Batch needs to be complete.
+     */
+    private static String truncate(String val, Integer maxLen) {
+        if (String.isBlank(val) || val.length() <= maxLen) return val;
+        return val.substring(0, maxLen - 20) + '... [TRUNCATED]';
+    }
+
+    /**
+     * Strips the 'thoughtSignature' field from a Gemini API response JSON.
+     * This field is a large base64-encoded blob that is included in Gemini responses
+     * when the model uses extended thinking. It is completely useless for debugging
+     * and typically inflates the ResponseJSON by 90%+ (tens of thousands of characters).
+     * Removing it makes the remaining JSON fit easily within field limits.
+     */
+    private static String stripThoughtSignature(String responseJson) {
+        if (String.isBlank(responseJson)) return responseJson;
+        // Regex: remove "thoughtSignature": "<base64_value>" including the comma if present
+        return responseJson
+            .replaceAll(',?\\s*"thoughtSignature"\\s*:\\s*"[^"]*"', '')
+            .replaceAll('"thoughtSignature"\\s*:\\s*"[^"]*",?\\s*', '');
+    }
+
     private static Integer getRetryHours() {
         try {
             EmailToLead_Ai__AI_Configure__c cfg = [

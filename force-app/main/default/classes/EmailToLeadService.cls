@@ -111,22 +111,155 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
                 }
             }
 
-            debugTrace += '\nTotal leads to insert: ' + leads.size() + '\n';
+            debugTrace += '\nTotal leads to insert (before dedup): ' + leads.size() + '\n';
 
             if (leads == null || leads.isEmpty()) {
                 throw new CalloutException('No leads created. Debug: ' + debugTrace);
             }
 
+            // ── Pre-insert Email + Company duplicate check ──────────────────────
+            // Two-layer duplicate protection:
+            //   Layer 1 (this block): Custom SOQL check on Email + Company.
+            //              A lead is a duplicate only if BOTH email AND company
+            //              match an existing Lead — same person at a new company
+            //              is treated as a NEW lead.
+            //   Layer 2 (Database.insert below): Salesforce Standard Duplicate
+            //              Rules run as a second safety net (runAsCurrentUser=true).
+            //
+            // We implement Layer 1 ourselves because managed packages cannot ship
+            // Matching/Duplicate Rules, so customer orgs may have none configured.
+            // ─────────────────────────────────────────────────────────────────────
+
+            // Step 1 — Collect all emails from the leads we are about to insert
+            Set<String> emailsToCheck = new Set<String>();
+            for (Lead lc : leads) {
+                if (String.isNotBlank(lc.Email)) {
+                    emailsToCheck.add(lc.Email.toLowerCase().trim());
+                }
+            }
+
+            // Step 2 — Query existing Leads by email, then build a composite key
+            //           map of  "email|company"  →  existing Lead Id.
+            //           SOQL here runs in system mode (no WITH SHARING) so it
+            //           finds records regardless of the running user's visibility.
+            Map<String, Id> existingByEmailCompany = new Map<String, Id>();
+            if (!emailsToCheck.isEmpty()) {
+                for (Lead existLead : [
+                    SELECT Id, Email, Company
+                    FROM Lead
+                    WHERE Email IN :emailsToCheck
+                    LIMIT 2000
+                ]) {
+                    if (String.isBlank(existLead.Email)) continue;
+                    String eKey = existLead.Email.toLowerCase().trim();
+                    String cKey = String.isNotBlank(existLead.Company)
+                        ? existLead.Company.toLowerCase().trim()
+                        : '';
+                    // Use § (U+00A7) as separator — never appears in emails or company names
+                    existingByEmailCompany.put(eKey + '\u00A7' + cKey, existLead.Id);
+                }
+            }
+
+            List<Lead> leadsToInsert      = new List<Lead>();
+            Set<String> seenEmailCompany  = new Set<String>(); // in-batch dedup
+
+            for (Lead lc : leads) {
+                String emailKey   = String.isNotBlank(lc.Email)
+                    ? lc.Email.toLowerCase().trim()
+                    : null;
+                String companyKey = String.isNotBlank(lc.Company)
+                    ? lc.Company.toLowerCase().trim()
+                    : '';
+                // Use § (U+00A7) as separator — never appears in emails or company names,
+                // eliminating any theoretical false-positive collision risk.
+                String compositeKey = (emailKey != null) ? (emailKey + '\u00A7' + companyKey) : null;
+
+                if (compositeKey == null) {
+                    // No email available for dedup. Note: for single-lead emails where
+                    // AI didn't extract an email, buildSingleLead() already falls back
+                    // to email.fromAddress — so l.Email is typically already populated
+                    // before reaching here. This null path is only hit when:
+                    //   (a) multiple leads in one email AND AI didn't extract email for
+                    //       this specific lead (fromAddress belongs to the sender, not
+                    //       to each individual lead, so it can't be used here), OR
+                    //   (b) single lead AND email.fromAddress was also blank.
+                    // In both cases there is no reliable email to check — let it through.
+                    leadsToInsert.add(lc);
+                    continue;
+                }
+
+                // ── Check 1: same Email+Company appearing twice in this batch ──
+                if (seenEmailCompany.contains(compositeKey)) {
+                    debugTrace += 'PRE-INSERT DEDUP (batch): skipped Email+Company=' + compositeKey + '\n';
+                    if (!isRetryContext) {
+                        CustomExceptionLogger.logDuplicate(
+                            new EmailToLeadDmlException(
+                                'Duplicate Email+Company in same batch: ' + lc.Email + ' | ' + lc.Company),
+                            'EmailToLeadService',
+                            null,
+                            lastRequestJSON,
+                            lastResponseJSON,
+                            emailHeader,
+                            emailBody,
+                            emailBody
+                        );
+                    }
+                    continue;
+                }
+
+                // ── Check 2: Email+Company already exists in the org ───────────
+                if (existingByEmailCompany.containsKey(compositeKey)) {
+                    Id existId = existingByEmailCompany.get(compositeKey);
+                    debugTrace += 'PRE-INSERT DEDUP (existing): skipped Email=' + lc.Email
+                        + ' | Company=' + lc.Company + ' | existingId=' + existId + '\n';
+                    if (!isRetryContext) {
+                        CustomExceptionLogger.logDuplicate(
+                            new EmailToLeadDmlException(
+                                'Lead already exists with Email+Company: ' + lc.Email + ' | ' + lc.Company),
+                            'EmailToLeadService',
+                            existId,
+                            lastRequestJSON,
+                            lastResponseJSON,
+                            emailHeader,
+                            emailBody,
+                            emailBody
+                        );
+                    }
+                    continue;
+                }
+
+                seenEmailCompany.add(compositeKey);
+                leadsToInsert.add(lc);
+            }
+
+            debugTrace += 'After dedup — leads to insert: ' + leadsToInsert.size() + '\n';
+
+            if (leadsToInsert.isEmpty()) {
+                // All leads were duplicates — not retriable
+                result.success = false;
+                result.message = 'Duplicate: All leads already exist in the org.';
+                return result;
+            }
+            // ── End custom duplicate check ─────────────────────────────────────
+
             Database.SaveResult[] results;
 
             if (Test.isRunningTest()) {
-                results = Database.insert(leads, false);
+                results = Database.insert(leadsToInsert, false);
             } else {
+                // Layer 2: Salesforce Standard Duplicate Rules (second safety net)
+                // runAsCurrentUser = false → REQUIRED because this service runs as a
+                //   System Administrator, who has "Bypass Duplicate Checking" enabled
+                //   by default. With true, Salesforce would silently skip all duplicate
+                //   rules for admin users — making Layer 2 completely ineffective.
+                //   Setting false forces rules to run in system mode regardless of
+                //   the current user's bypass permissions.
+                // allowSave = false        → duplicate detected = hard block (no alert)
                 Database.DMLOptions opts = new Database.DMLOptions();
                 opts.DuplicateRuleHeader.allowSave = false;
-                opts.DuplicateRuleHeader.runAsCurrentUser = true;
+                opts.DuplicateRuleHeader.runAsCurrentUser = false;
                 opts.optAllOrNone = false;
-                results = Database.insert(leads, opts);
+                results = Database.insert(leadsToInsert, opts);
             }
 
             debugTrace += 'Database.insert returned ' + results.size() + ' SaveResult(s)\n';
@@ -198,6 +331,33 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
                             }
                         }
 
+                        // Collect additional duplicate details
+                        String ruleInfo = '';
+                        try {
+                            if (e instanceof Database.DuplicateError) {
+                                Database.DuplicateError de = (Database.DuplicateError)e;
+                                Datacloud.DuplicateResult dr = de.getDuplicateResult();
+                                if (dr != null) {
+                                    ruleInfo += ' | Rule: ' + dr.getDuplicateRule();
+                                    Set<String> matchedFields = new Set<String>();
+                                    for (Datacloud.MatchResult mr : dr.getMatchResults()) {
+                                        ruleInfo += ' | MatchRule: ' + mr.getRule();
+                                        for (Datacloud.MatchRecord mrec : mr.getMatchRecords()) {
+                                            for (Datacloud.FieldDiff fd : mrec.getFieldDiffs()) {
+                                                matchedFields.add(fd.getName());
+                                            }
+                                        }
+                                    }
+                                    if (!matchedFields.isEmpty()) {
+                                        ruleInfo += ' | MatchedFields: ' + String.join(new List<String>(matchedFields), ', ');
+                                    }
+                                }
+                            }
+                        } catch (Exception ex) {
+                            // Suppress errors during detail extraction
+                        }
+
+                        msg += ruleInfo;
                         errors.add(msg);
                         debugTrace += 'SaveResult[' + i + ']: DUPLICATE | ' + msg + (dupId != null ? ' | existingId=' + dupId : '') + '\n';
 
@@ -377,10 +537,14 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         if (res.getStatusCode() >= 300)
             throw new CalloutException(res.getBody());
 
-        String path =
-            String.isBlank(apiCfg.EmailToLead_Ai__Response_Content_Path__c)
-            ? 'choices[0].message.content'
-            : apiCfg.EmailToLead_Ai__Response_Content_Path__c;
+        String path = apiCfg.EmailToLead_Ai__Response_Content_Path__c;
+        if (String.isBlank(path)) {
+            if (provider.toLowerCase().contains('gemini')) {
+                path = 'candidates[0].content.parts[0].text';
+            } else {
+                path = 'choices[0].message.content';
+            }
+        }
 
         return extractContentByPath(res.getBody(), path);
     }
@@ -577,8 +741,16 @@ if (String.isBlank(l.Title) && String.isNotBlank(l.Salutation)) {
             return null;
         }
 
-        if (String.isBlank(l.LastName))
-            l.LastName = 'Unknown';
+        // Salesforce requires LastName. If AI put everything in FirstName (common for single names), 
+        // move it to LastName. Otherwise default to 'Unknown'.
+        if (String.isBlank(l.LastName)) {
+            if (String.isNotBlank(l.FirstName)) {
+                l.LastName = l.FirstName;
+                l.FirstName = null;
+            } else {
+                l.LastName = 'Unknown';
+            }
+        }
        if (String.isBlank(l.Email) && leadCount == 1 && String.isNotBlank(email.fromAddress)) {
             l.Email = email.fromAddress.toLowerCase();
         }
