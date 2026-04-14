@@ -10,6 +10,8 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
     private static String lastRequestJSON;
     private static String lastResponseJSON;
 
+    public static List<Id> createdLeadIds;
+
     private static Set<String> cachedAllowedFields;
     private static Map<String, Schema.SObjectField> cachedLeadFields;
     
@@ -26,7 +28,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         Messaging.InboundEmailResult result =
             new Messaging.InboundEmailResult();
 
-        List<Id> createdLeadIds = new List<Id>();
+        createdLeadIds = new List<Id>();
 
         String cleanedBody = null;
         String emailHeader = null;
@@ -238,6 +240,9 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
                 // All leads were duplicates — not retriable
                 result.success = false;
                 result.message = 'Duplicate: All leads already exist in the org.';
+                if (!existingByEmailCompany.isEmpty()) {
+                    createdLeadIds.addAll(existingByEmailCompany.values());
+                }
                 return result;
             }
             // ── End custom duplicate check ─────────────────────────────────────
@@ -278,14 +283,16 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
                     success.add(id);
                     debugTrace += 'SaveResult[' + i + ']: SUCCESS id=' + id + '\n';
 
-                    CustomExceptionLogger.logSuccess(
-                        'Lead #' + (i+1) + ' created',
-                        'EmailToLeadService',
-                        'Success',
-                        id,
-                        lastRequestJSON,
-                        lastResponseJSON
-                    );
+                    if (!isRetryContext) {
+                        CustomExceptionLogger.logSuccess(
+                            'Lead #' + (i+1) + ' created',
+                            'EmailToLeadService',
+                            'Success',
+                            id,
+                            lastRequestJSON,
+                            lastResponseJSON
+                        );
+                    }
 
                 } else {
 
@@ -329,6 +336,10 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
                                     dupId = null;
                                 }
                             }
+                        }
+
+                        if (dupId != null && createdLeadIds.isEmpty()) {
+                            createdLeadIds.add(dupId);
                         }
 
                         // Collect additional duplicate details

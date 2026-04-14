@@ -54,8 +54,18 @@ public class EmailToLeadRetryBatchTest {
 
         /* ============== AI CONFIG ============== */
 
+        insert new EmailToLead_Ai__AI_Configs__c(
+            Name = 'Retry Config',
+            EmailToLead_Ai__Model_Name__c = 'dummy-model',
+            EmailToLead_Ai__Named_Credential__c = 'dummy_cred',
+            EmailToLead_Ai__Endpoint__c = 'https://dummy',
+            EmailToLead_Ai__Response_Content_Path__c = 'choices[0].message.content',
+            EmailToLead_Ai__Is_Active__c = true
+        );
+
         insert new EmailToLead_Ai__AI_Configure__c(
             Name = 'Retry Config',
+            EmailToLead_Ai__Model__c = 'Retry Config',
             EmailToLead_Ai__isActive__c = true,
             EmailToLead_Ai__Scheduler_Retry_Hours__c = 2
         );
@@ -155,20 +165,37 @@ static void testBatchExecution() {
 
     EmailToLead_Ai__Custom_Exception__c r =
         [SELECT EmailToLead_Ai__Retry_Status__c,
-                EmailToLead_Ai__Retry_Count__c
+                EmailToLead_Ai__Retry_Count__c,
+                EmailToLead_Ai__Lead__c,
+                Name
          FROM EmailToLead_Ai__Custom_Exception__c
-         WHERE Name = 'Success Log'
+         WHERE Id = :[SELECT Id FROM EmailToLead_Ai__Custom_Exception__c WHERE Name LIKE '%Success Log%' LIMIT 1].Id
          LIMIT 1];
 
 
-    System.assertNotEquals(
-        null,
-        r.EmailToLead_Ai__Retry_Status__c
-    );
+    System.assertEquals('Success', r.EmailToLead_Ai__Retry_Status__c);
+    System.assert(r.Name.contains('Success'), 'Name should be updated to Success');
+    System.assertNotEquals(null, r.EmailToLead_Ai__Lead__c, 'Lead lookup should be populated');
+}
 
-    System.assert(
-        r.EmailToLead_Ai__Retry_Count__c >= 1
-    );
+private class DuplicateMock implements HttpCalloutMock {
+    public HTTPResponse respond(HTTPRequest req) {
+        throw new CalloutException('Duplicate lead discovered');
+    }
+}
+
+@IsTest
+static void testBatchDuplicateHandling() {
+    keepOnlyOnePending('Success Log');
+    Test.setMock(HttpCalloutMock.class, new DuplicateMock());
+
+    Test.startTest();
+    Database.executeBatch(new EmailToLeadRetryBatch(), 1);
+    Test.stopTest();
+
+    EmailToLead_Ai__Custom_Exception__c r = [SELECT Name, EmailToLead_Ai__Retry_Status__c FROM EmailToLead_Ai__Custom_Exception__c WHERE EmailToLead_Ai__Retry_Status__c = 'Duplicate' LIMIT 1];
+    System.assertEquals('Duplicate', r.EmailToLead_Ai__Retry_Status__c);
+    System.assert(r.Name.contains('Duplicate'), 'Record Name should be updated to Duplicate');
 }
  
 

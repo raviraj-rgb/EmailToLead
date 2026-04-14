@@ -211,6 +211,8 @@ private class EmailToLeadService_Test {
         Test.stopTest();
 
         System.assertNotEquals(null, result);
+        System.assertEquals(true, result.success);
+        System.assert(EmailToLeadService.createdLeadIds.size() > 0, 'Lead IDs should be captured');
     }
 
     // ============================================================
@@ -826,5 +828,62 @@ private class EmailToLeadService_Test {
         // The overall result is success because at least one lead was created
         System.assertEquals(true, result.success,
             'Result should be success when at least one lead was inserted');
+    }
+
+    @isTest
+    static void testHandleInboundEmail_NoAiLeadData() {
+        Test.setMock(HttpCalloutMock.class, new EmptyJsonMockResponse());
+        Messaging.InboundEmail email = new Messaging.InboundEmail();
+        email.plainTextBody = 'No lead data here';
+        email.fromAddress = 'test@test.com';
+        Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
+        Test.startTest();
+        Messaging.InboundEmailResult result = new EmailToLeadService().handleInboundEmail(email, env);
+        Test.stopTest();
+        System.assertEquals(false, result.success);
+    }
+
+    private class GarbageMock implements HttpCalloutMock {
+        public HTTPResponse respond(HTTPRequest req) {
+            HttpResponse res = new HttpResponse();
+            res.setStatusCode(200);
+            res.setBody('This is not JSON at all');
+            return res;
+        }
+    }
+
+    @isTest
+    static void testHandleInboundEmail_NullParsed() {
+        Test.setMock(HttpCalloutMock.class, new GarbageMock());
+        Messaging.InboundEmail email = new Messaging.InboundEmail();
+        email.plainTextBody = 'Garbage in';
+        email.fromAddress = 'test@test.com';
+        Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
+        Test.startTest();
+        Messaging.InboundEmailResult result = new EmailToLeadService().handleInboundEmail(email, env);
+        Test.stopTest();
+        System.assertEquals(false, result.success);
+    }
+
+    private class AiHeaderMock implements HttpCalloutMock {
+        public HTTPResponse respond(HTTPRequest req) {
+            HttpResponse res = new HttpResponse();
+            res.setStatusCode(200);
+            res.setBody('{"email_header": "Custom AI Header", "leads": [{"FirstName": "Test", "LastName": "User", "Email": "test@test.com", "Company": "Test Co", "summary": "Test"}]}');
+            return res;
+        }
+    }
+
+    @isTest
+    static void testHandleInboundEmail_WithAiHeader() {
+        Test.setMock(HttpCalloutMock.class, new AiHeaderMock());
+        Messaging.InboundEmail email = new Messaging.InboundEmail();
+        email.plainTextBody = 'Lead with header';
+        email.fromAddress = 'test@test.com';
+        Messaging.InboundEnvelope env = new Messaging.InboundEnvelope();
+        Test.startTest();
+        Messaging.InboundEmailResult result = new EmailToLeadService().handleInboundEmail(email, env);
+        Test.stopTest();
+        System.assertEquals(true, result.success);
     }
 }
