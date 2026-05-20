@@ -39,7 +39,8 @@
         <lightning-card title="EmailToLead AI Config" icon-name="utility:robot">
             <div class="page-container">
                 <lightning-record-edit-form object-api-name="EmailToLead_Ai__AI_Configure__c" record-id={configId}
-                    onsubmit={handleSubmit} onsuccess={handleSuccess}>
+                    onsubmit={handleSubmit} onsuccess={handleSuccess} onerror={handleError}>
+
                     <lightning-messages></lightning-messages>
 
                     <!-- Model picklist -->
@@ -48,7 +49,12 @@
                             onchange={handleModelChange}>
                         </lightning-combobox>
                     </div>
-
+                    <lightning-input 
+    type="number"
+    label="Scheduler Retry Hours"
+    value={retryHours}
+    onchange={handleRetryHoursChange}>
+</lightning-input>
 
                     <!-- Prompts -->
                     <div class="prompt-grid">
@@ -64,9 +70,9 @@
                     <!-- Actions -->
                     <div class="actions">
                         <lightning-button variant="brand" type="submit" label="Save"></lightning-button>
-
                         <lightning-button variant="neutral" label="Reset" onclick={handleReset}></lightning-button>
                     </div>
+
                 </lightning-record-edit-form>
             </div>
         </lightning-card>
