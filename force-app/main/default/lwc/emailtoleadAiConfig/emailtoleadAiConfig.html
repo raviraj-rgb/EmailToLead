@@ -45,26 +45,20 @@
 
                     <!-- Model picklist -->
                     <div class="model-row">
-                        <lightning-combobox label="Model" value={modelValue} options={modelOptions}
+                        <lightning-input-field field-name="EmailToLead_Ai__Model__c" value={modelValue}
                             onchange={handleModelChange}>
-                        </lightning-combobox>
+                        </lightning-input-field>
                     </div>
-                    <lightning-input 
-    type="number"
-    label="Scheduler Retry Hours"
-    value={retryHours}
-    onchange={handleRetryHoursChange}>
-</lightning-input>
 
                     <!-- Prompts -->
                     <div class="prompt-grid">
-                        <lightning-textarea class="prompt-textarea" label="System Prompt" value={systemPrompt}
-                            onchange={handleSystemPromptChange}>
-                        </lightning-textarea>
+                        <lightning-input-field field-name="EmailToLead_Ai__System_prompt__c" class="prompt-textarea"
+                            value={systemPrompt} onchange={handleSystemPromptChange}>
+                        </lightning-input-field>
 
-                        <lightning-textarea class="prompt-textarea" label="User Prompt" value={userPrompt}
-                            onchange={handleUserPromptChange}>
-                        </lightning-textarea>
+                        <lightning-input-field field-name="EmailToLead_Ai__User_Prompt__c" class="prompt-textarea"
+                            value={userPrompt} onchange={handleUserPromptChange}>
+                        </lightning-input-field>
                     </div>
 
                     <!-- Actions -->

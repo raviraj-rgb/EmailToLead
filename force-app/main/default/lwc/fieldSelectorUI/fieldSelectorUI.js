@@ -258,23 +258,28 @@ export default class EmailLeadFieldSelector extends LightningElement {
         const { error, data } = result;
 
         if (data) {
-            this.fieldOptions = data.allFields.map(f => ({
+            // Add null safety for arrays
+            const allFields = data.allFields || [];
+            const longTextFields = data.longTextFields || [];
+
+            this.fieldOptions = allFields.map(f => ({
                 label: f.label,
                 value: f.apiName
             }));
 
-            this.selectedValues = data.allFields
+            this.selectedValues = allFields
                 .filter(f => f.isSelected)
                 .map(f => f.apiName);
 
-            this.longTextFieldOptions = data.longTextFields.map(f => ({
+            this.longTextFieldOptions = longTextFields.map(f => ({
                 label: f.label,
                 value: f.apiName
             }));
 
-            this.emailBodyField = data.emailBodyField;
-            this.summaryField = data.summaryField;
+            this.emailBodyField = data.emailBodyField || '';
+            this.summaryField = data.summaryField || '';
         } else if (error) {
+            console.error('Error loading field configuration:', error);
             this.showToast('Error', error.body ? error.body.message : error.message, 'error');
         }
     }
@@ -315,6 +320,17 @@ export default class EmailLeadFieldSelector extends LightningElement {
     }
 
     handleSave() {
+        // Final validation before save
+        if (this.emailBodyField && this.summaryField &&
+            this.emailBodyField === this.summaryField) {
+            this.showToast(
+                'Validation Error',
+                'Email Body Field and Summary Field cannot be the same. Please select different fields.',
+                'error'
+            );
+            return;
+        }
+
         this.isSaving = true;
 
         saveSelectedFields({

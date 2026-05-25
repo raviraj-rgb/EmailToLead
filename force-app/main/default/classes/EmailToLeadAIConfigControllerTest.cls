@@ -3,7 +3,14 @@ private class EmailToLeadAIConfigControllerTest {
 
     @testSetup
     static void setup() { 
-        // No active config inserted here so createDefaultConfig() will create one
+        // Insert custom setting record to satisfy the trigger validation in the org
+        EmailToLead_Ai__Ai_Configs__c cs = new EmailToLead_Ai__Ai_Configs__c(
+            Name = 'glm-4.5-air',
+            EmailToLead_Ai__Is_Active__c = true,
+            EmailToLead_Ai__Named_Credential__c = 'EmailToLead_Ai__zApi',
+            EmailToLead_Ai__Response_Content_Path__c = 'choices[0].message.content'
+        );
+        insert cs;
     }
  
     @IsTest
@@ -28,7 +35,7 @@ private class EmailToLeadAIConfigControllerTest {
 
         System.assertEquals('Default', insertedCfg.Name, 'Default name should be set');
         System.assertEquals(true, insertedCfg.EmailToLead_Ai__isActive__c, 'Config must be active');
-        System.assertEquals('choices[0].message.content',
+        System.assertEquals('output[0].content[0].text',
                             insertedCfg.EmailToLead_Ai__Response_Content_Path__c,
                             'Default response content path must match');
 
@@ -92,5 +99,37 @@ private class EmailToLeadAIConfigControllerTest {
         System.assertNotEquals(null, activeCfg, 'Active config should not be null');
         System.assertEquals(cfg.Id, activeCfg.Id, 'getActiveConfig should return the active config');
         System.assertEquals(true, activeCfg.EmailToLead_Ai__isActive__c, 'Returned config must be active');
+    }
+
+    @IsTest
+    static void testGetActiveModels() {
+        // Clear setup data
+        delete [SELECT Id FROM EmailToLead_Ai__Ai_Configs__c];
+
+        // Insert active custom settings
+        EmailToLead_Ai__Ai_Configs__c config1 = new EmailToLead_Ai__Ai_Configs__c(
+            Name = 'Mistral',
+            EmailToLead_Ai__Is_Active__c = true
+        );
+        EmailToLead_Ai__Ai_Configs__c config2 = new EmailToLead_Ai__Ai_Configs__c(
+            Name = 'ChatGPT',
+            EmailToLead_Ai__Is_Active__c = false
+        );
+        insert new List<EmailToLead_Ai__Ai_Configs__c>{config1, config2};
+
+        Test.startTest();
+        List<String> activeModels = EmailToLeadAIConfigController.getActiveModels();
+        Test.stopTest();
+
+        System.assertEquals(1, activeModels.size(), 'Should return exactly 1 active model');
+        System.assertEquals('Mistral', activeModels[0], 'Should be Mistral');
+    }
+
+    @IsTest
+    static void testEnsureActiveConfig() {
+        Test.startTest();
+        EmailToLead_Ai__AI_Configure__c cfg = EmailToLeadAIConfigController.ensureActiveConfig();
+        Test.stopTest();
+        System.assertNotEquals(null, cfg, 'Config should not be null');
     }
 }

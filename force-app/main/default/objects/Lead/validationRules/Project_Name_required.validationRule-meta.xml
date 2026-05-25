@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ValidationRule xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Project_Name_required</fullName>
+    <active>false</active>
+    <description>Project name required prior Lead is converted</description>
+    <errorConditionFormula>AND(
+ISPICKVAL( Status , &apos;Converted&apos;),
+ISBLANK( Project_Name__c ),
+Create_Project__c = TRUE
+)</errorConditionFormula>
+    <errorMessage>Project Name is required in order to convert the Lead</errorMessage>
+</ValidationRule>

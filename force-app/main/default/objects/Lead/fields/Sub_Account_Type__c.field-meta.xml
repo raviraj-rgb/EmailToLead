@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sub_Account_Type__c</fullName>
+    <label>EL_Sub Account Type</label>
+    <required>false</required>
+    <trackFeedHistory>false</trackFeedHistory>
+    <type>Picklist</type>
+    <valueSet>
+        <controllingField>Industry</controllingField>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Certified Installer</fullName>
+                <default>false</default>
+                <label>Certified Installer</label>
+            </value>
+            <value>
+                <fullName>Church/Religious Group</fullName>
+                <default>false</default>
+                <label>Church/Religious Group</label>
+            </value>
+            <value>
+                <fullName>College/University</fullName>
+                <default>false</default>
+                <label>College/University</label>
+            </value>
+            <value>
+                <fullName>Corporation</fullName>
+                <default>false</default>
+                <label>Corporation</label>
+            </value>
+            <value>
+                <fullName>Daycare/Preschool</fullName>
+                <default>false</default>
+                <label>Daycare/Preschool</label>
+            </value>
+            <value>
+                <fullName>General Contractor</fullName>
+                <default>false</default>
+                <label>General Contractor</label>
+            </value>
+            <value>
+                <fullName>Head Start</fullName>
+                <default>false</default>
+                <label>Head Start</label>
+            </value>
+            <value>
+                <fullName>Housing/HOA/Property Management</fullName>
+                <default>false</default>
+                <label>Housing/HOA/Property Management</label>
+            </value>
+            <value>
+                <fullName>Manufacture</fullName>
+                <default>false</default>
+                <label>Manufacture</label>
+            </value>
+            <value>
+                <fullName>Non-Profit</fullName>
+                <default>false</default>
+                <label>Non-Profit</label>
+            </value>
+            <value>
+                <fullName>Other</fullName>
+                <default>false</default>
+                <label>Other</label>
+            </value>
+            <value>
+                <fullName>Other Public Agency</fullName>
+                <default>false</default>
+                <label>Other Public Agency</label>
+            </value>
+            <value>
+                <fullName>Park &amp; Recreation</fullName>
+                <default>false</default>
+                <label>Park &amp; Recreation</label>
+            </value>
+            <value>
+                <fullName>Playground Contractor</fullName>
+                <default>false</default>
+                <label>Playground Contractor</label>
+            </value>
+            <value>
+                <fullName>Private School</fullName>
+                <default>false</default>
+                <label>Private School</label>
+            </value>
+            <value>
+                <fullName>Public School District</fullName>
+                <default>false</default>
+                <label>Public School District</label>
+            </value>
+            <value>
+                <fullName>Residential Developer</fullName>
+                <default>false</default>
+                <label>Residential Developer</label>
+            </value>
+            <value>
+                <fullName>Sale Rep Agency</fullName>
+                <default>false</default>
+                <label>Sale Rep Agency</label>
+            </value>
+            <value>
+                <fullName>Landscape Architect</fullName>
+                <default>false</default>
+                <label>Landscape Architect</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

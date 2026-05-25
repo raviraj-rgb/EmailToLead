@@ -1,5 +1,5 @@
 @IsTest
-public class AI_ConfigureTrigger_Test {
+public class AI_ConfigureTriggerTest {
 
     private static String getValidModel() {
         List<Schema.PicklistEntry> vals =
