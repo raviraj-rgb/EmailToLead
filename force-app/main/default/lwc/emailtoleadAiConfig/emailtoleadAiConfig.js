@@ -257,3 +257,4 @@ export default class EmailtoleadAiConfig extends LightningElement {
         this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
     }
 }
+//Gitting

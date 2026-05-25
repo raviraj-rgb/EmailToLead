@@ -9,4 +9,5 @@ ISBLANK( Project_Name__c ),
 Create_Project__c = TRUE
 )</errorConditionFormula>
     <errorMessage>Project Name is required in order to convert the Lead</errorMessage>
+<!-- Gitting -->
 </ValidationRule>

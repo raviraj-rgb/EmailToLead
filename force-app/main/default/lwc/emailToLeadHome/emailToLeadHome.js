@@ -10,3 +10,4 @@ export default class EmailToLeadHome extends LightningElement {
     showFieldSelector() { this.showField = true; this.showAi = false; }
     showAiConfig() { this.showField = false; this.showAi = true; }
 }
+//Gitting

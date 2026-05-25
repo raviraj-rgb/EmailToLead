@@ -17,4 +17,5 @@
     <showsLocation>false</showsLocation>
     <showsStatus>false</showsStatus>
     <url>http://www.google.com/news?&amp;q={!Lead.Company}&amp;btnG=Search+News</url>
+<!-- Gitting -->
 </WebLink>

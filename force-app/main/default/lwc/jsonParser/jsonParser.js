@@ -86,3 +86,4 @@ export default class jsonParsor extends LightningElement {
     //         this.refs.outputArea.value = prettify;
     //     }
 }
+//Gitting

@@ -8,4 +8,5 @@
         <target>lightning__RecordPage</target>
         <target>lightning__HomePage</target>
     </targets>
+<!-- Gitting -->
 </LightningComponentBundle>
