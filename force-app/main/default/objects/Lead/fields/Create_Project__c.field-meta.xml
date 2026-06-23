@@ -3,8 +3,7 @@
     <fullName>Create_Project__c</fullName>
     <defaultValue>false</defaultValue>
     <inlineHelpText>If checked a project will be created on lead conversion</inlineHelpText>
-    <label>EL_Create Project</label>
+    <label>Create Project</label>
     <trackFeedHistory>false</trackFeedHistory>
     <type>Checkbox</type>
-<!-- Gitting -->
 </CustomField>

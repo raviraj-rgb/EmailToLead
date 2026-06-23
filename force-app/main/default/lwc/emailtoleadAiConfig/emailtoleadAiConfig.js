@@ -53,7 +53,9 @@ const DEFAULT_SYSTEM_PROMPT =
     '- Company names → Company. Job titles → Title.\n' +
     '- Locations → City, State, Country, Street.\n' +
     '- Lead source phrases → LeadSource. Industry names → Industry.\n' +
-    '- Custom fields ending in __c are allowed.\n\n' +
+    '- "Inquiry Comments" label → Description. COPY THE FULL TEXT VERBATIM across multiple lines. Do NOT summarize, shorten, or paraphrase.\n' +
+    '- Custom fields ending in __c are allowed.\n' +
+    '- When extracting an address, you MUST parse and break it apart into the individual components: Street, City, State, and PostalCode. Do not put the entire address string into the Street field.\n\n' +
     'IMPORTANT:\n' +
     '- For ALL templates: completely IGNORE and EXCLUDE forwarded message headers (---------- Forwarded message ---------, -------- Original Message --------, etc.), email signatures, footers, and boilerplate. Only extract data from the actual lead content.\n' +
     '- NEVER extract Email/Phone/Website from signatures/footers.\n' +
@@ -70,7 +72,8 @@ const DEFAULT_SYSTEM_PROMPT =
     '- Never add fields not in the allowed list except "summary", "email_body", "email_header", "email_footer".\n' +
     '- "summary" and "email_body" MUST be present in each lead object.\n' +
     '- "email_header" and "email_footer" at root level (or in each lead if single).\n' +
-    '- The FIRST character MUST be "{" and the LAST MUST be "}".';
+    '- The FIRST character MUST be "{" and the LAST MUST be "}".\n' +
+    '- When extracting an address, you MUST parse and break it apart into the individual components: Street, City, State, and PostalCode. Do not put the entire address string into the Street field.';
 
 const DEFAULT_USER_PROMPT =
     'Extract ONLY the following fields into JSON: {ALLOWED_FIELDS}.\n' +

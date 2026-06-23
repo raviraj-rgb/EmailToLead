@@ -131,7 +131,6 @@ global class CustomExceptionLogger {
         // We will just do nothing here to honor the request while maintaining method signature for now.
         System.debug('### DUPLICATE LOG SUPPRESSED BY USER REQUEST');
     }
-
     // Legacy support for old calls
     global static void logException(Exception ex, String className, String typeValue, String errorId, Id leadId, String req, String res) {
         logException(ex, className, typeValue, leadId, null, null, req, res);
@@ -139,6 +138,18 @@ global class CustomExceptionLogger {
     
     global static void logException(Exception ex, String className, String typeValue, Id leadId, String header, String body, String req, String res, String retry) {
         logException(ex, className, typeValue, leadId, header, body, req, res);
+    }
+
+    // ⚠️ BACKWARD COMPATIBILITY — Do NOT remove. Was global in v0.3 of managed package.
+    // logException with (Id errorRecordId, Id leadId) — old 9-param signature
+    global static void logException(Exception ex, String className, String typeValue, Id errorRecordId, Id leadId, String header, String body, String req, String res) {
+        logException(ex, className, typeValue, leadId, header, body, req, res);
+    }
+
+    // ⚠️ BACKWARD COMPATIBILITY — Do NOT remove. Was global in v0.3 of managed package.
+    // logSkipped with 4 params — old signature
+    global static void logSkipped(String reason, String className, String requestJSON, String responseJSON) {
+        logSkipped(reason, className, null, null, requestJSON, responseJSON);
     }
 }
 //Gitting

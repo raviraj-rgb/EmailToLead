@@ -1,6 +1,6 @@
 global class EmailToLeadService implements Messaging.InboundEmailHandler {
 
-    @TestVisible public static Boolean isRetryContext = false;
+    global static Boolean isRetryContext = false; // Must stay global — managed package backward compatibility
     @TestVisible private static Boolean FORCE_DML_ERROR_TEST = false;
     @TestVisible public static List<Id> createdLeadIds = new List<Id>();
     private static String lastRequestJSON;
@@ -56,7 +56,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
                         'N/A'
                     );
                 }
-                result.success = false;
+                result.success = true;
                 result.message = 'Skipped: Daily summary email — not processed.';
                 return result;
             }
@@ -90,7 +90,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
                     );
                 }
 
-                result.success = false;
+                result.success = true;
                 result.message = 'Skipped: No lead data found.';
                 return result;
             }
@@ -99,6 +99,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
             Database.DMLOptions dml = new Database.DMLOptions();
             dml.DuplicateRuleHeader.allowSave = true;
             dml.DuplicateRuleHeader.runAsCurrentUser = true;
+            dml.assignmentRuleHeader.useDefaultRule = true;
             dml.optAllOrNone = false;
 
             Database.SaveResult[] saveResults = Database.insert(leadsList, dml);
@@ -225,10 +226,21 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         Map<String, EmailToLead_Ai__Email_Lead_Field__c> allConfigs = EmailToLead_Ai__Email_Lead_Field__c.getAll();
         if (allConfigs == null || allConfigs.isEmpty()) throw new CalloutException('Email Lead Fields configuration missing.');
         Set<String> allowed = new Set<String>();
+        Map<String, Schema.SObjectField> leadFields = Schema.SObjectType.Lead.fields.getMap();
         for (String key : allConfigs.keySet()) {
             EmailToLead_Ai__Email_Lead_Field__c cfg = allConfigs.get(key);
             if (cfg != null && !String.isBlank(cfg.EmailToLead_Ai__Selected_fields__c)) {
-                for (String f : cfg.EmailToLead_Ai__Selected_fields__c.split(',')) if (!String.isBlank(f)) allowed.add(f.trim());
+                for (String f : cfg.EmailToLead_Ai__Selected_fields__c.split(',')) {
+                    if (!String.isBlank(f)) {
+                        String cleanField = f.trim();
+                        // Resolve to exact Salesforce API casing (e.g. 'email' -> 'Email')
+                        if (leadFields.containsKey(cleanField)) {
+                            allowed.add(leadFields.get(cleanField).getDescribe().getName());
+                        } else {
+                            allowed.add(cleanField);
+                        }
+                    }
+                }
             }
         }
         return allowed;
@@ -333,6 +345,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
             }
         }
         for (String validVal : validValues) if (validVal.equalsIgnoreCase(aiValue)) return validVal;
+        if (!fieldDesc.isRestrictedPicklist()) return aiValue;
         if (hasOther) return 'Other';
         return null;
     }
@@ -396,31 +409,67 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         Lead leadObj = new Lead();
         Map<String, Schema.SObjectField> leadFields = Schema.SObjectType.Lead.fields.getMap();
         Set<String> allowedFields = getAllowedFields();
+        // Build lowercase->exact case map for case-insensitive AI JSON key matching
+        Map<String, String> allowedLowerToExact = new Map<String, String>();
+        for (String f : allowedFields) {
+            allowedLowerToExact.put(f.toLowerCase(), f);
+        }
         for (String key : jsonMap.keySet()) {
-            if (allowedFields.contains(key) && leadFields.containsKey(key)) {
-                Schema.DescribeFieldResult fieldDesc = leadFields.get(key).getDescribe();
+            String keyLower = key.toLowerCase();
+            if (allowedLowerToExact.containsKey(keyLower) && leadFields.containsKey(keyLower)) {
+                String exactField = allowedLowerToExact.get(keyLower);
+                
+                // Force population of local Project fields INSTEAD of packaged ones.
+                if (exactField.toLowerCase().startsWith('emailtolead_ai__project_') || exactField.toLowerCase().startsWith('emailtolead_ai_project_')) {
+                    String localEquiv = exactField.toLowerCase().replace('emailtolead_ai__', '').replace('emailtolead_ai_', '');
+                    if (leadFields.containsKey(localEquiv)) {
+                        exactField = leadFields.get(localEquiv).getDescribe().getName();
+                    }
+                }
+
+                Schema.DescribeFieldResult fieldDesc = leadFields.get(exactField).getDescribe();
                 if (!fieldDesc.isCreateable()) continue;
                 Object val = jsonMap.get(key);
                 if (val == null) continue;
                 try {
-                    if (key == 'Email') val = normalizeEmail(String.valueOf(val));
-                    else if (key == 'Phone' || key == 'MobilePhone') val = normalizePhone(String.valueOf(val));
-                    else if (key == 'Website') val = normalizeWebsite(String.valueOf(val));
+                    if (exactField.equalsIgnoreCase('Email')) val = normalizeEmail(String.valueOf(val));
+                    else if (exactField.equalsIgnoreCase('Phone') || exactField.equalsIgnoreCase('MobilePhone')) val = normalizePhone(String.valueOf(val));
+                    else if (exactField.equalsIgnoreCase('Website')) val = normalizeWebsite(String.valueOf(val));
                     if (val == null) continue;
                     Schema.DisplayType dt = fieldDesc.getType();
                     if (dt == Schema.DisplayType.Currency || dt == Schema.DisplayType.Double || dt == Schema.DisplayType.Percent) {
-                        String s = String.valueOf(val).replace(',', '').trim(); if (!String.isBlank(s)) leadObj.put(key, Decimal.valueOf(s));
+                        String s = String.valueOf(val).replace(',', '').trim(); if (!String.isBlank(s)) leadObj.put(exactField, Decimal.valueOf(s));
                     } else if (dt == Schema.DisplayType.Integer) {
-                        String s = String.valueOf(val).replace(',', '').trim(); if (!String.isBlank(s)) leadObj.put(key, Integer.valueOf(s));
+                        String s = String.valueOf(val).replace(',', '').trim(); if (!String.isBlank(s)) leadObj.put(exactField, Integer.valueOf(s));
                     } else if (dt == Schema.DisplayType.Boolean) {
-                        String s = String.valueOf(val).trim().toLowerCase(); leadObj.put(key, (s == 'true' || s == '1' || s == 'yes'));
+                        String s = String.valueOf(val).trim().toLowerCase(); leadObj.put(exactField, (s == 'true' || s == '1' || s == 'yes'));
                     } else if (dt == Schema.DisplayType.Picklist || dt == Schema.DisplayType.MultiPicklist) {
-                        String validatedValue = validatePicklistValue(key, String.valueOf(val)); if (validatedValue != null) leadObj.put(key, validatedValue);
-                    } else leadObj.put(key, String.valueOf(val));
-                } catch (Exception ex) { System.debug('⚠️ Field conversion skipped for ' + key + ': ' + ex.getMessage()); }
+                        String validatedValue = validatePicklistValue(exactField, String.valueOf(val)); if (validatedValue != null) leadObj.put(exactField, validatedValue);
+                    } else {
+                        String strVal = String.valueOf(val);
+                        Integer maxLen = fieldDesc.getLength();
+                        if (maxLen > 0 && strVal.length() > maxLen) {
+                            System.debug('⚠️ Field value too long for ' + exactField + ' (len=' + strVal.length() + ', max=' + maxLen + '). Truncating to fit field limit.');
+                            strVal = strVal.left(maxLen);
+                        }
+                        leadObj.put(exactField, strVal);
+                    }
+                } catch (Exception ex) { System.debug('⚠️ Field conversion skipped for ' + exactField + ': ' + ex.getMessage()); }
             }
         }
-        if (String.isBlank(leadObj.LeadSource)) leadObj.LeadSource = validatePicklistValue('LeadSource', 'Other');
+        String bodySearch = (cleanedBody != null) ? cleanedBody.toLowerCase() : '';
+        String respSearch = (lastResponseJSON != null) ? lastResponseJSON.toLowerCase() : '';
+        
+        Boolean isLsi = bodySearch.contains('playlsi') || respSearch.contains('playlsi');
+        Boolean isDumor = bodySearch.contains('dumor') || respSearch.contains('dumor');
+
+        if (isLsi) {
+            leadObj.LeadSource = validatePicklistValue('LeadSource', 'LSI');
+        } else if (isDumor) {
+            leadObj.LeadSource = validatePicklistValue('LeadSource', 'DuMor');
+        } else if (String.isBlank(leadObj.LeadSource)) {
+            leadObj.LeadSource = validatePicklistValue('LeadSource', 'Other');
+        }
 
         // ✅ Use AI's clean email_body for the Description/body field.
         // The AI already strips forwarded headers, signatures, and boilerplate —
@@ -428,9 +477,21 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         // Fall back to cleanedBody if AI didn't return an email_body.
         if (!String.isBlank(cfg.EmailToLead_Ai__Email_Body_Field__c) && leadFields.containsKey(cfg.EmailToLead_Ai__Email_Body_Field__c)) {
             String aiEmailBody = jsonMap.containsKey('email_body') ? String.valueOf(jsonMap.get('email_body')) : '';
-            leadObj.put(cfg.EmailToLead_Ai__Email_Body_Field__c, String.isNotBlank(aiEmailBody) ? aiEmailBody : cleanedBody);
+            String emailBodyVal = String.isNotBlank(aiEmailBody) ? aiEmailBody : cleanedBody;
+            Integer emailBodyMax = leadFields.get(cfg.EmailToLead_Ai__Email_Body_Field__c).getDescribe().getLength();
+            if (emailBodyMax > 0 && String.isNotBlank(emailBodyVal) && emailBodyVal.length() > emailBodyMax) {
+                emailBodyVal = emailBodyVal.left(emailBodyMax);
+            }
+            leadObj.put(cfg.EmailToLead_Ai__Email_Body_Field__c, emailBodyVal);
         }
-        if (!String.isBlank(cfg.EmailToLead_Ai__Summary_Field__c) && jsonMap.containsKey('summary') && leadFields.containsKey(cfg.EmailToLead_Ai__Summary_Field__c)) leadObj.put(cfg.EmailToLead_Ai__Summary_Field__c, jsonMap.get('summary'));
+        if (!String.isBlank(cfg.EmailToLead_Ai__Summary_Field__c) && jsonMap.containsKey('summary') && leadFields.containsKey(cfg.EmailToLead_Ai__Summary_Field__c)) {
+            String summaryVal = String.valueOf(jsonMap.get('summary'));
+            Integer summaryMax = leadFields.get(cfg.EmailToLead_Ai__Summary_Field__c).getDescribe().getLength();
+            if (summaryMax > 0 && String.isNotBlank(summaryVal) && summaryVal.length() > summaryMax) {
+                summaryVal = summaryVal.left(summaryMax);
+            }
+            leadObj.put(cfg.EmailToLead_Ai__Summary_Field__c, summaryVal);
+        }
         leadObj.EmailToLead_Ai__Is_Lead_Created_From_Email__c = true;
 
         // ✅ Name fallback: if AI didn't split the name into FirstName/LastName,
@@ -454,8 +515,14 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         if (String.isBlank(leadObj.LastName)) leadObj.LastName = 'Unknown';
         
         // Email priority: AI extracted > Original sender > email.fromAddress
+        // ✅ Only use the fallback email if it fits within Salesforce's 80-char Email field limit.
         if (String.isBlank(leadObj.Email)) {
-            leadObj.Email = !String.isBlank(originalSenderEmail) ? originalSenderEmail : email.fromAddress;
+            String fallbackEmail = !String.isBlank(originalSenderEmail) ? originalSenderEmail : email.fromAddress;
+            if (String.isNotBlank(fallbackEmail) && fallbackEmail.length() <= 80) {
+                leadObj.Email = fallbackEmail;
+            } else if (String.isNotBlank(fallbackEmail)) {
+                System.debug('⚠️ Fallback email too long for Email field (len=' + fallbackEmail.length() + '). Leaving Email blank to preserve lead insert.');
+            }
         }
 
         // Derive company ONLY if Company field is blank after AI processing
@@ -464,6 +531,63 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
             if (emailForCompany != null && emailForCompany.contains('@')) {
                 String domain = emailForCompany.substringAfter('@').toLowerCase();
                 leadObj.Company = domain.contains('gmail.com') ? 'Company' : domain;
+            }
+        }
+
+        // Duplicate standard address to Project Address fields via Apex
+        if (String.isNotBlank(leadObj.Street)) {
+            if (leadFields.containsKey('project_address__c')) {
+                leadObj.put(leadFields.get('project_address__c'), leadObj.Street);
+            } else if (leadFields.containsKey('emailtolead_ai__project_address__c')) {
+                leadObj.put(leadFields.get('emailtolead_ai__project_address__c'), leadObj.Street);
+            }
+        }
+        if (String.isNotBlank(leadObj.City)) {
+            if (leadFields.containsKey('project_city__c')) {
+                leadObj.put(leadFields.get('project_city__c'), leadObj.City);
+            } else if (leadFields.containsKey('emailtolead_ai__project_city__c')) {
+                leadObj.put(leadFields.get('emailtolead_ai__project_city__c'), leadObj.City);
+            }
+        }
+        if (String.isNotBlank(leadObj.State)) {
+            if (leadFields.containsKey('project_state__c')) {
+                leadObj.put(leadFields.get('project_state__c'), leadObj.State);
+            } else if (leadFields.containsKey('emailtolead_ai__project_state__c')) {
+                leadObj.put(leadFields.get('emailtolead_ai__project_state__c'), leadObj.State);
+            }
+        }
+        if (String.isNotBlank(leadObj.PostalCode)) {
+            if (leadFields.containsKey('project_zip_code__c')) {
+                leadObj.put(leadFields.get('project_zip_code__c'), leadObj.PostalCode);
+            } else if (leadFields.containsKey('emailtolead_ai__project_zip_code__c')) {
+                leadObj.put(leadFields.get('emailtolead_ai__project_zip_code__c'), leadObj.PostalCode);
+            }
+        }
+        if (String.isNotBlank(leadObj.Country)) {
+            if (leadFields.containsKey('project_country__c')) {
+                leadObj.put(leadFields.get('project_country__c'), leadObj.Country);
+            } else if (leadFields.containsKey('emailtolead_ai__project_country__c')) {
+                leadObj.put(leadFields.get('emailtolead_ai__project_country__c'), leadObj.Country);
+            }
+        }
+
+
+
+        // LSI Marketing Consent → HasOptedOutOfEmail
+        // Yes = gave consent = wants emails → false (not opted out)
+        // No  = no consent   = no emails   → true  (opted out)
+        String consentBody = jsonMap.containsKey('email_body') ? String.valueOf(jsonMap.get('email_body')) : cleanedBody;
+        if (!String.isBlank(consentBody)) {
+            for (String consentLine : consentBody.split('\n')) {
+                if (consentLine.toLowerCase().contains('lsi marketing consent')) {
+                    String consentVal = consentLine.substringAfter(':').trim().replaceAll('\\*', '').trim().toLowerCase();
+                    if (consentVal.startsWith('yes')) {
+                        leadObj.HasOptedOutOfEmail = false;
+                    } else if (consentVal.startsWith('no')) {
+                        leadObj.HasOptedOutOfEmail = true;
+                    }
+                    break;
+                }
             }
         }
 
@@ -507,4 +631,7 @@ global class EmailToLeadService implements Messaging.InboundEmailHandler {
         return 'From: ' + fromAddr + '\nSubject: ' + subj + '\n\n' + body;
     }
 }
+
+
+
 //Gitting

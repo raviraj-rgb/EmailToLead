@@ -1,6 +1,6 @@
 global class EmailToLeadRetryBatch implements Database.Batchable<SObject>, Database.AllowsCallouts, Database.Stateful {
 
-    private static final Integer MAX_RETRY_COUNT = 1;
+    private static final Integer MAX_RETRY_COUNT = 1; // Each failed email is retried exactly 1 time
     private Integer successCount = 0;
     private Integer failureCount = 0;
 

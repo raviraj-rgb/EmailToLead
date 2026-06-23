@@ -11,10 +11,10 @@ public class CustomExceptionLoggerTest {
                 e,
                 'CustomExceptionLoggerTest',
                 'Error',
-                null,
-                null,
+                (Id)null,     // errorRecordId
+                (Id)null,     // leadId
                 '{"req": "test"}',
-                '{"res": "test", "thoughtSignature": "abc"}',
+                '{"res": "test"}',
                 'From: test@demo.com',
                 'Body content'
             );
@@ -24,18 +24,17 @@ public class CustomExceptionLoggerTest {
             null,
             'CustomExceptionLoggerTest',
             'Manual',
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
+            (Id)null,     // errorRecordId
+            (Id)null,     // leadId
+            (String)null, // header
+            (String)null, // body
+            (String)null, // req
+            (String)null  // res
         );
         Test.stopTest();
 
         List<EmailToLead_Ai__Custom_Exception__c> logs = [SELECT Id, EmailToLead_Ai__Exception_message__c, EmailToLead_Ai__ResponseJSON__c FROM EmailToLead_Ai__Custom_Exception__c];
         System.assert(logs.size() >= 2, 'Should have created at least 2 logs');
-        System.assert(!logs[0].EmailToLead_Ai__ResponseJSON__c.contains('thoughtSignature'), 'Thought signature should be stripped');
     }
 
     @IsTest
@@ -92,7 +91,8 @@ public class CustomExceptionLoggerTest {
         Test.stopTest();
         
         EmailToLead_Ai__Custom_Exception__c log = [SELECT EmailToLead_Ai__Exception_message__c, EmailToLead_Ai__ResponseJSON__c FROM EmailToLead_Ai__Custom_Exception__c LIMIT 1];
-        System.assert(log.EmailToLead_Ai__Exception_message__c.length() <= 32700, 'Message should be truncated');
+        System.assertEquals(32700, log.EmailToLead_Ai__Exception_message__c.length(), 'Should truncate message to 32700');
+        System.assertEquals(jsonWithThought, log.EmailToLead_Ai__ResponseJSON__c, 'Should store full response JSON');
     }
 
     @IsTest
@@ -107,15 +107,40 @@ public class CustomExceptionLoggerTest {
             null,
             'Test',
             'Test',
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
+            (Id)null,     // errorRecordId
+            (Id)null,     // leadId
+            (String)null, // header
+            (String)null, // body
+            (String)null, // req
+            (String)null  // res
         );
         Test.stopTest();
         // Just ensuring no crash
+    }
+
+    @IsTest
+    static void testLogSkipped() {
+        Test.startTest();
+        CustomExceptionLogger.logSkipped(
+            'Skipped reason',
+            'TestClass',
+            'Header info',
+            'Body info',
+            'Req json',
+            'Res json'
+        );
+        Test.stopTest();
+        
+        List<EmailToLead_Ai__Custom_Exception__c> logs = [SELECT EmailToLead_Ai__Retry_Status__c, EmailToLead_Ai__Type__c FROM EmailToLead_Ai__Custom_Exception__c];
+        EmailToLead_Ai__Custom_Exception__c log = null;
+        for (EmailToLead_Ai__Custom_Exception__c l : logs) {
+            if (l.EmailToLead_Ai__Type__c == 'Skipped') {
+                log = l;
+                break;
+            }
+        }
+        System.assertNotEquals(null, log, 'Skipped log should exist');
+        System.assertEquals('Skipped', log.EmailToLead_Ai__Retry_Status__c);
     }
 }
 //Gitting

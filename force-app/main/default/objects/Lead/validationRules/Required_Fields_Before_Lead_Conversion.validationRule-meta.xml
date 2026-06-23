@@ -16,5 +16,4 @@
 								ISBLANK(MobilePhone)								)
 )</errorConditionFormula>
     <errorMessage>Please fill all fields under Project and Contact Information.</errorMessage>
-<!-- Gitting -->
 </ValidationRule>

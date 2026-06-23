@@ -20,7 +20,8 @@
                 <default>false</default>
                 <label>ChatGPT</label>
             </value>
+
         </valueSetDefinition>
     </valueSet>
-<!-- Gitting -->
+    <!-- Gitting -->
 </CustomField>

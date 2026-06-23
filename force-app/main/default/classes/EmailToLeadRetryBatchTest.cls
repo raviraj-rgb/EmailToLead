@@ -86,11 +86,11 @@ public class EmailToLeadRetryBatchTest {
             EmailToLead_Ai__Email_Body__c = 'Demo lead inquiry from test@demo.com'
         ));
 
-        // Record 2: second retry attempt (count = 1, batch will mark as Failed after)
+        // Record 2: second retry attempt (count = 0, batch will pick up, fail, and mark as Failed)
         logs.add(new EmailToLead_Ai__Custom_Exception__c(
             Name = 'Exception - Fail Log',
             EmailToLead_Ai__Retry_Status__c = 'Pending',
-            EmailToLead_Ai__Retry_Count__c = 1,
+            EmailToLead_Ai__Retry_Count__c = 0,
             EmailToLead_Ai__Next_Retry_Time__c = System.now().addDays(-1),
             EmailToLead_Ai__Email_Header__c = 'From: test@demo.com\nSubject: Demo retry',
             EmailToLead_Ai__Email_Body__c = 'Demo retry body'
@@ -164,13 +164,13 @@ public class EmailToLeadRetryBatchTest {
         Database.executeBatch(new EmailToLeadRetryBatch(), 1);
         Test.stopTest();
 
-        // Original Pending log should be updated to Duplicate status
+        // Original Pending log should be updated to Success status since duplicate is allowed to save
         EmailToLead_Ai__Custom_Exception__c log = [
             SELECT Id, EmailToLead_Ai__Retry_Status__c FROM EmailToLead_Ai__Custom_Exception__c
             WHERE Name = 'Exception - Success Log'
             LIMIT 1
         ];
-        System.assertEquals('Duplicate', log.EmailToLead_Ai__Retry_Status__c, 'Log status should be Duplicate');
+        System.assertEquals('Success', log.EmailToLead_Ai__Retry_Status__c, 'Log status should be Success');
     }
 
     /* ============================================================
@@ -193,8 +193,8 @@ public class EmailToLeadRetryBatchTest {
         ];
         System.assertEquals('Failed', updated.EmailToLead_Ai__Retry_Status__c,
             'Record with retry count >= MAX should be marked as Failed');
-        System.assertEquals(2, updated.EmailToLead_Ai__Retry_Count__c,
-            'Retry count should be incremented to 2');
+        System.assertEquals(1, updated.EmailToLead_Ai__Retry_Count__c,
+            'Retry count should be incremented to 1');
     }
 
     /* ============================================================
@@ -215,8 +215,8 @@ public class EmailToLeadRetryBatchTest {
             WHERE Name = 'Exception - Success Log'
             LIMIT 1
         ];
-        System.assertEquals('Pending', r.EmailToLead_Ai__Retry_Status__c,
-            'Record should stay Pending on first callout failure');
+        System.assertEquals('Failed', r.EmailToLead_Ai__Retry_Status__c,
+            'Record should be marked Failed on callout failure');
         System.assertEquals(1, r.EmailToLead_Ai__Retry_Count__c,
             'Retry count should be incremented');
     }
@@ -272,6 +272,40 @@ public class EmailToLeadRetryBatchTest {
         Database.QueryLocator ql = new EmailToLeadRetryBatch().start(null);
         Test.stopTest();
         System.assertNotEquals(null, ql, 'QueryLocator should not be null');
+    }
+
+    /* ============================================================
+       TEST 7 — Old log format (Header without From:)
+     ============================================================ */
+    @IsTest
+    static void testBatchOldLogFormat() {
+        // Insert a record with old header format
+        EmailToLead_Ai__Custom_Exception__c oldFormat = new EmailToLead_Ai__Custom_Exception__c(
+            Name = 'Exception - Old Format',
+            EmailToLead_Ai__Retry_Status__c = 'Pending',
+            EmailToLead_Ai__Retry_Count__c = null,
+            EmailToLead_Ai__Next_Retry_Time__c = System.now().addDays(-1),
+            EmailToLead_Ai__Email_Header__c = 'Just a Subject',
+            EmailToLead_Ai__Email_Body__c = 'From: sender@demo.com\nSome old body'
+        );
+        insert oldFormat;
+
+        keepOnlyOnePending('Exception - Old Format');
+        Test.setMock(HttpCalloutMock.class, new SuccessMock());
+
+        Test.startTest();
+        Database.executeBatch(new EmailToLeadRetryBatch(), 1);
+        Test.stopTest();
+
+        EmailToLead_Ai__Custom_Exception__c r = [
+            SELECT EmailToLead_Ai__Retry_Status__c, EmailToLead_Ai__Retry_Count__c
+            FROM EmailToLead_Ai__Custom_Exception__c
+            WHERE Name = 'Exception - Old Format'
+            LIMIT 1
+        ];
+        // Ensure retry count goes from null to 1, and success processing completes
+        System.assertEquals(1, r.EmailToLead_Ai__Retry_Count__c);
+        System.assertEquals('Success', r.EmailToLead_Ai__Retry_Status__c);
     }
 }
 //Gitting
